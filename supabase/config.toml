@@ -1,0 +1,18 @@
+# Supabase project configuration
+# Apply to your cloud project via: supabase link --project-ref <ref> && supabase db push
+# Auth settings are pushed via the Supabase CLI or configured in the dashboard under
+# Authentication → Settings.
+
+[auth.email]
+# OTP / magic link expiry in seconds.
+# Default is 3600 (1 hour). 86400 = 24 hours.
+# In dashboard: Authentication → Settings → "OTP Expiration"
+otp_expiry = 86400
+
+# Allow users to sign up (required for magic link / OTP flow)
+enable_signup = true
+
+# Confirm email addresses before allowing sign in.
+# Set to false for OTP-only flows where the OTP itself is the confirmation.
+double_confirm_changes = true
+enable_confirmations = false
