@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Zap } from 'lucide-react';
 import { FREE_FEATURES, PRO_FEATURES, PRICES } from '@/lib/stripe/plans.js';
@@ -15,7 +15,7 @@ interface ApiError {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function PricingPage() {
+function PricingContent() {
   const router = useRouter();
   const isPaid = useFeature('rotation_memory');
   const session = useSession();
@@ -305,5 +305,13 @@ export default function PricingPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense>
+      <PricingContent />
+    </Suspense>
   );
 }
