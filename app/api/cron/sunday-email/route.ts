@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import { generateWeekPlan } from '@/lib/engine/planner.js';
 import { serializeWeekPlan } from '@/utils/serialize.js';
-import type { PlannerInput, RotationState, HomeSize, TimePreference, Zone } from '@/lib/engine/types.js';
+import type { PlannerInput, RotationState, HomeSize, TimePreference, HomeType, PetType, FlooringType, Zone } from '@/lib/engine/types.js';
 import type { SerializedWeekPlan } from '@/utils/serialize.js';
 import type { SundayEmailResult } from '@/types/api';
 
@@ -134,7 +134,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Get household config
       const { data: household } = await supabase
         .from('households')
-        .select('home_size, household_count, pets, kids, time_preference, rotation_state')
+        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -151,15 +151,29 @@ export async function GET(request: Request): Promise<NextResponse> {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      // Map timePreference: accept new labels or legacy numeric values
+      const rawPref = household.time_preference as unknown;
+      const timePreference: TimePreference =
+        rawPref === 'quick' || rawPref === 'steady' || rawPref === 'thorough' || rawPref === 'batch' ? rawPref
+        : rawPref === 'BATCH' || rawPref === 30 || String(rawPref) === '30' ? 'thorough'
+        : rawPref === 10 || String(rawPref) === '10' ? 'quick'
+        : 'steady';
+
+      // Derive petTypes from new column or fall back to legacy boolean
+      const storedPetTypes = Array.isArray(household.pet_types) ? household.pet_types as PetType[] : null;
+      const petTypes: PetType[] = storedPetTypes ?? (household.pets ? ['cat-1-2'] : []);
+
       // Generate plan
       const plannerInput: PlannerInput = {
         homeSize: household.home_size as HomeSize,
-        householdCount: household.household_count,
-        pets: household.pets,
-        kids: household.kids,
-        timePreference: (household.time_preference === 'BATCH'
-          ? 'BATCH'
-          : Number(household.time_preference)) as TimePreference,
+        homeType: (household.home_type as HomeType | undefined) ?? 'single-family',
+        householdCount: household.household_count as number,
+        petTypes,
+        kids: household.kids as boolean,
+        flooringTypes: Array.isArray(household.flooring_types)
+          ? household.flooring_types as FlooringType[]
+          : ['mixed'],
+        timePreference,
         weekOf,
         rotationState: (household.rotation_state as RotationState) ?? undefined,
       };

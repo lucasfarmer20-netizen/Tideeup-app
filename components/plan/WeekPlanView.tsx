@@ -133,9 +133,8 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
             key={i}
             day={day}
             isToday={isToday(day)}
-            members={isPaid && members?.length ? members : undefined}
+            {...(isPaid && members?.length ? { members, onAssign: handleAssign } : {})}
             assignments={assignments}
-            onAssign={isPaid && members?.length ? handleAssign : undefined}
           />
         ))}
       </div>

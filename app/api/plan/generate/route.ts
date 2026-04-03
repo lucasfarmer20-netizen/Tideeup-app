@@ -138,10 +138,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     flooringTypes,
     timePreference: timePreference as TimePreference,
     weekOf: new Date(), // always plan for the current week
-    rotationState,
-    seasonOverride,
-    noGoDays,
-    customTasks,
+    ...(rotationState !== undefined ? { rotationState } : {}),
+    ...(seasonOverride !== undefined ? { seasonOverride } : {}),
+    ...(noGoDays !== undefined ? { noGoDays } : {}),
+    ...(customTasks !== undefined ? { customTasks } : {}),
   };
 
   // Run the engine (pure, synchronous)

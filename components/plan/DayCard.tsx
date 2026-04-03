@@ -88,9 +88,9 @@ export function DayCard({ day, isToday = false, members, assignments, onAssign }
               <TaskRow
                 key={t.task.id}
                 scheduledTask={t}
-                members={members}
-                assignment={assignments?.[t.task.id]}
-                onAssign={onAssign}
+                {...(members ? { members } : {})}
+                {...(assignments?.[t.task.id] ? { assignment: assignments[t.task.id] } : {})}
+                {...(onAssign ? { onAssign } : {})}
               />
             ))}
             {stabilisers.length > 0 && featured.length > 0 && (
@@ -103,9 +103,9 @@ export function DayCard({ day, isToday = false, members, assignments, onAssign }
                   <TaskRow
                     key={t.task.id}
                     scheduledTask={t}
-                    members={members}
-                    assignment={assignments?.[t.task.id]}
-                    onAssign={onAssign}
+                    {...(members ? { members } : {})}
+                    {...(assignments?.[t.task.id] ? { assignment: assignments[t.task.id] } : {})}
+                    {...(onAssign ? { onAssign } : {})}
                   />
                 ))}
               </div>

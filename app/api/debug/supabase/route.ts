@@ -13,16 +13,7 @@ export async function GET(): Promise<NextResponse> {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 1. Raw SQL — what tables exist in public schema?
-  const { data: tables, error: tablesError } = await supabase
-    .rpc('pg_catalog_tables')
-    .select('*')
-    .limit(1)
-    .maybeSingle()
-    .then(() => ({ data: null, error: null })) // rpc won't work, use sql below
-    .catch(() => ({ data: null, error: 'rpc failed' }));
-
-  // 2. Try a direct select on users
+  // Try a direct select on users
   const { data: usersData, error: usersError } = await supabase
     .from('users')
     .select('id')

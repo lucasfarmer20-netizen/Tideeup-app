@@ -24,7 +24,7 @@ export function SpilloverList({ tasks }: SpilloverListProps) {
           <li key={task.id} className="flex items-center gap-2 text-sm text-amber-700">
             <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
             {task.title}
-            <span className="text-xs text-amber-500 ml-auto">{task.baseMinutes}m+</span>
+            <span className="text-xs text-amber-500 ml-auto">{task.typicalMinutes.M}m+</span>
           </li>
         ))}
       </ul>

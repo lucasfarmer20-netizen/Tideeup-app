@@ -32,7 +32,7 @@ export function CompleteWeekButton({ planId, onComplete }: CompleteWeekButtonPro
 
       const data = (await res.json()) as { streak: StreakData };
       setDone(true);
-      onComplete(data.streak);
+      onComplete?.(data.streak);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {

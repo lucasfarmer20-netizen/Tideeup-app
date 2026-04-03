@@ -211,10 +211,10 @@ describe('generateWeekPlan — monthly task placement', () => {
 
 describe('generateWeekPlan — season detection', () => {
   it('auto-detects winter when weekOf is in January and no override', () => {
+    const { seasonOverride: _so, ...baseNoOverride } = BASE_INPUT;
     const plan = generateWeekPlan({
-      ...BASE_INPUT,
+      ...baseNoOverride,
       weekOf: new Date('2025-01-06T00:00:00Z'),
-      seasonOverride: undefined,
     });
     expect(plan.metadata.season).toBe('winter');
   });
@@ -225,10 +225,10 @@ describe('generateWeekPlan — season detection', () => {
   });
 
   it('auto-detects summer for June', () => {
+    const { seasonOverride: _so2, ...baseNoOverride2 } = BASE_INPUT;
     const plan = generateWeekPlan({
-      ...BASE_INPUT,
+      ...baseNoOverride2,
       weekOf: new Date('2025-06-02T00:00:00Z'),
-      seasonOverride: undefined,
     });
     expect(plan.metadata.season).toBe('summer');
   });
@@ -252,7 +252,8 @@ describe('generateWeekPlan — rotation state', () => {
   });
 
   it('includes all tasks when no rotation state', () => {
-    const plan = generateWeekPlan({ ...BASE_INPUT, rotationState: undefined });
+    const { rotationState: _rs, ...baseNoRotation } = BASE_INPUT;
+    const plan = generateWeekPlan({ ...baseNoRotation });
     const hasLaundry = plan.days.some((d) =>
       d.tasks.some((t) => t.task.id === 'laundry-wash-dry'),
     );
@@ -298,12 +299,12 @@ describe('generateWeekPlan — home type filtering', () => {
   });
 
   it('includes outdoor tasks for single-family homes in season', () => {
+    const { seasonOverride: _so3, ...baseNoOverride3 } = BASE_INPUT;
     const plan = generateWeekPlan({
-      ...BASE_INPUT,
+      ...baseNoOverride3,
       homeType: 'single-family',
       timePreference: 'thorough',
       weekOf: new Date('2025-06-02T00:00:00Z'),
-      seasonOverride: undefined,
     });
     const hasOutdoor = plan.days.some((d) =>
       d.tasks.some((t) => t.task.zone === 'outdoor'),

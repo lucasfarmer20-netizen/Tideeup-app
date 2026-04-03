@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import type { CookieOptions } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import { generateWeekPlan } from '@/lib/engine/planner.js';
 import { serializeWeekPlan } from '@/utils/serialize';
-import type { RotationState, Season } from '@/lib/engine/types.js';
+import type { RotationState, Season, HomeType, PetType, FlooringType, TimePreference } from '@/lib/engine/types.js';
 
 // All fields optional — send only what you want to change.
 // Core profile fields (homeSize etc.) are required together when re-generating the plan.
@@ -28,7 +29,7 @@ async function getAuthUserId(): Promise<string | null> {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
+        setAll: (cookiesToSet: { name: string; value: string; options: CookieOptions }[]) => {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options),
           );
@@ -109,7 +110,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
     const [planRes, hRes, userRes] = await Promise.all([
       supabase.from('plans').select('id, completed_at').eq('user_id', userId).eq('week_of', currentMondayISO).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('households').select('rotation_state, season_override, no_go_days, home_size, household_count, pets, kids, time_preference').eq('user_id', userId).maybeSingle(),
+      supabase.from('households').select('rotation_state, season_override, no_go_days, home_size, home_type, household_count, pet_types, pets, kids, time_preference, flooring_types').eq('user_id', userId).maybeSingle(),
       supabase.from('users').select('tier').eq('id', userId).maybeSingle(),
     ]);
 
@@ -119,20 +120,43 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
     const effectiveHomeSize = (homeSize ?? household?.home_size ?? 'M') as Parameters<typeof generateWeekPlan>[0]['homeSize'];
     const effectiveCount = householdCount ?? (household?.household_count as number | undefined) ?? 2;
-    const effectivePets = pets ?? (household?.pets as boolean | undefined) ?? false;
     const effectiveKids = kids ?? (household?.kids as boolean | undefined) ?? false;
-    const effectivePref = (timePreference ?? household?.time_preference ?? 20) as Parameters<typeof generateWeekPlan>[0]['timePreference'];
+
+    // Map timePreference: accept new labels or legacy numeric values
+    const rawPref = timePreference ?? household?.time_preference;
+    const effectivePref: TimePreference =
+      rawPref === 'quick' || rawPref === 'steady' || rawPref === 'thorough' || rawPref === 'batch' ? rawPref
+      : rawPref === 'BATCH' || rawPref === 30 || String(rawPref) === '30' ? 'thorough'
+      : rawPref === 10 || String(rawPref) === '10' ? 'quick'
+      : 'steady';
+
+    // Derive petTypes from new column or fall back to legacy boolean
+    const storedPetTypes = Array.isArray(household?.pet_types) ? household.pet_types as PetType[] : null;
+    const legacyPets = pets ?? (household?.pets as boolean | undefined) ?? false;
+    const effectivePetTypes: PetType[] = storedPetTypes ?? (legacyPets ? ['cat-1-2'] : []);
+
+    const effectiveHomeType: HomeType = (household?.home_type as HomeType | undefined) ?? 'single-family';
+    const effectiveFlooringTypes: FlooringType[] =
+      Array.isArray(household?.flooring_types) ? household.flooring_types as FlooringType[] : ['mixed'];
+
+    const effectiveRotationState = isPaid && household?.rotation_state
+      ? (household.rotation_state as RotationState)
+      : undefined;
+    const effectiveSeasonOverride = (household?.season_override ?? seasonOverride ?? null) as Season | null;
+    const effectiveNoGoDays = household?.no_go_days as number[] | undefined;
 
     const newPlan = generateWeekPlan({
       homeSize: effectiveHomeSize,
+      homeType: effectiveHomeType,
       householdCount: effectiveCount,
-      pets: effectivePets,
+      petTypes: effectivePetTypes,
       kids: effectiveKids,
+      flooringTypes: effectiveFlooringTypes,
       timePreference: effectivePref,
       weekOf: new Date(),
-      rotationState: isPaid && household?.rotation_state ? (household.rotation_state as RotationState) : undefined,
-      seasonOverride: (household?.season_override ?? seasonOverride ?? null) as Season | undefined,
-      noGoDays: household?.no_go_days as number[] | undefined,
+      ...(effectiveRotationState ? { rotationState: effectiveRotationState } : {}),
+      ...(effectiveSeasonOverride ? { seasonOverride: effectiveSeasonOverride } : {}),
+      ...(effectiveNoGoDays?.length ? { noGoDays: effectiveNoGoDays } : {}),
     });
     const serialized = serializeWeekPlan(newPlan);
 
@@ -147,7 +171,6 @@ export async function PATCH(request: Request): Promise<NextResponse> {
         is_claimed: true,
         home_size: effectiveHomeSize,
         household_count: effectiveCount,
-        pets: effectivePets,
         kids: effectiveKids,
         time_preference: String(effectivePref),
         week_of: currentMondayISO,
