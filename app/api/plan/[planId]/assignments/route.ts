@@ -79,6 +79,12 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
   const { taskId, memberName } = parsed.data;
   const supabase = createAdminClient();
 
+  // Gate: task assignment is a paid feature
+  const { data: userRow } = await supabase.from('users').select('tier').eq('id', userId).maybeSingle();
+  if ((userRow as { tier?: string } | null)?.tier !== 'paid') {
+    return NextResponse.json({ message: 'Pro subscription required' }, { status: 403 });
+  }
+
   // Verify ownership
   const { data: plan } = await supabase
     .from('plans')

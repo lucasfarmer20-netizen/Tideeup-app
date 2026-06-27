@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { cookies } from 'next/headers';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import type { CaptureUserResponse } from '@/types/api';
@@ -31,6 +32,16 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const { email, planId } = parsed.data;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tideeup.com';
+
+  // Verify the caller actually generated this plan (cookie set by /api/plan/generate)
+  const cookieStore = await cookies();
+  const pendingPlanId = cookieStore.get('pending_plan_id')?.value;
+  if (!pendingPlanId || pendingPlanId !== planId) {
+    return NextResponse.json(
+      { message: 'Plan does not match your session. Please regenerate your plan.' },
+      { status: 403 },
+    );
+  }
 
   try {
     const supabase = createAdminClient();

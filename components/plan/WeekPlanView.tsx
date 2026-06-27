@@ -19,6 +19,10 @@ interface WeekPlanViewProps {
   /** Paid tier: household member names for task assignment */
   members?: string[];
   isPaid?: boolean;
+  /** Home size for accurate time estimates in spillover list */
+  homeSize?: import('@/lib/engine/types.js').HomeSize;
+  /** True when the viewer owns this plan and can check off tasks (LTV task 1). */
+  canComplete?: boolean;
 }
 
 const SEASON_EMOJI: Record<string, string> = {
@@ -45,18 +49,64 @@ function isToday(day: WeekPlan['days'][number]): boolean {
   const d = getDayDate(day);
   const now = new Date();
   return (
-    d.getUTCFullYear() === now.getFullYear() &&
-    d.getUTCMonth() === now.getMonth() &&
-    d.getUTCDate() === now.getDate()
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate()
   );
 }
 
-export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members, isPaid = false }: WeekPlanViewProps) {
+export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members, isPaid = false, homeSize, canComplete = false }: WeekPlanViewProps) {
   const plan: WeekPlan = 'weekOf' in rawPlan && rawPlan.weekOf instanceof Date
     ? rawPlan as WeekPlan
     : deserializeWeekPlan(rawPlan as SerializedWeekPlan);
   const weekOf = getWeekOf(plan);
   const season = plan.metadata.season;
+
+  const showCompletion = Boolean(planId && canComplete && !isBlurred);
+  const totalTasks = plan.days.reduce((sum, d) => sum + d.tasks.length, 0);
+
+  // Per-task completion (LTV task 1): keys are `${dayIndex}:${taskId}`.
+  const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
+  const [weekComplete, setWeekComplete] = useState(false);
+
+  useEffect(() => {
+    if (!showCompletion || !planId) return;
+    fetch(`/api/plan/${planId}/completions`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { completions?: { taskId: string; dayIndex: number }[] } | null) => {
+        if (!data?.completions) return;
+        setCompletedKeys(new Set(data.completions.map((c) => `${c.dayIndex}:${c.taskId}`)));
+      })
+      .catch(() => null);
+  }, [planId, showCompletion]);
+
+  const handleToggleTask = useCallback(
+    (dayIndex: number, taskId: string, done: boolean) => {
+      const key = `${dayIndex}:${taskId}`;
+      // Optimistic update.
+      setCompletedKeys((prev) => {
+        const next = new Set(prev);
+        if (done) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+      if (!planId) return;
+      fetch(`/api/plan/${planId}/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, dayIndex, done }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { autoCompleted?: boolean } | null) => {
+          if (data?.autoCompleted) setWeekComplete(true);
+        })
+        .catch(() => null);
+    },
+    [planId],
+  );
+
+  const completedCount = completedKeys.size;
+  const progressPct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
   // Assignments: taskId -> memberName
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -126,6 +176,26 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
         )}
       </div>
 
+      {/* Weekly progress (LTV task 1) */}
+      {showCompletion && (
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">
+              {weekComplete
+                ? '🎉 Week complete — nice work!'
+                : `${completedCount} of ${totalTasks} tasks done`}
+            </span>
+            <span className="text-muted-foreground">{progressPct}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* 7-day grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {plan.days.map((day, i) => (
@@ -135,13 +205,16 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
             isToday={isToday(day)}
             {...(isPaid && members?.length ? { members, onAssign: handleAssign } : {})}
             assignments={assignments}
+            {...(showCompletion
+              ? { dayIndex: i, canComplete: true, completedKeys, onToggleTask: handleToggleTask }
+              : {})}
           />
         ))}
       </div>
 
       {/* Spillover */}
       {!isBlurred && plan.spillover.length > 0 && (
-        <SpilloverList tasks={plan.spillover} />
+        <SpilloverList tasks={plan.spillover} homeSize={homeSize} />
       )}
 
       {/* Locked feature gates — only for free users */}

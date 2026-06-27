@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/client.js';
 import { createAdminClient } from '@/lib/supabase/server.js';
+import { getServerUser } from '@/lib/supabase/session.js';
 
 const schema = z.object({
   priceId: z.string().min(1, 'priceId is required'),
@@ -24,24 +25,27 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const { priceId, email } = parsed.data;
+  const { priceId } = parsed.data;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tideeup.com';
 
-  console.log('[checkout] priceId:', priceId, '| email:', email ?? '(none)');
+  // Trust the authenticated session email; fall back to body email only
+  // for unauthenticated visitors on the public pricing page.
+  const authUser = await getServerUser();
+  const trustedEmail = authUser?.email ?? parsed.data.email ?? null;
 
   try {
     const stripe = getStripe();
-    console.log('[checkout] Stripe client created');
     const supabase = createAdminClient();
 
-    // Look up whether this email already has a Stripe customer ID
     let stripeCustomerId: string | null = null;
 
-    if (email) {
+    // Only look up existing user data when we have a trusted (auth-verified) email.
+    // Unauthenticated callers cannot trigger lookups for arbitrary emails.
+    if (authUser?.email) {
       const { data: user } = await supabase
         .from('users')
         .select('id, stripe_customer_id, tier, subscription_status')
-        .eq('email', email)
+        .eq('email', authUser.email)
         .maybeSingle();
 
       // Guard: already an active subscriber — send to billing portal instead
@@ -61,7 +65,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         stripeCustomerId = user.stripe_customer_id;
       } else if (user && !user.stripe_customer_id) {
         // Create a Stripe customer and save it now so the webhook can match later
-        const customer = await stripe.customers.create({ email });
+        const customer = await stripe.customers.create({ email: authUser.email });
         stripeCustomerId = customer.id;
 
         await supabase
@@ -74,8 +78,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Build customer identification — exactly one of customer or customer_email
     const customerParam = stripeCustomerId
       ? ({ customer: stripeCustomerId } as const)
-      : email
-        ? ({ customer_email: email } as const)
+      : trustedEmail
+        ? ({ customer_email: trustedEmail } as const)
         : ({} as const);
 
     const session = await stripe.checkout.sessions.create({

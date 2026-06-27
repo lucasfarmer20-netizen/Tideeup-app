@@ -8,7 +8,7 @@
  *  4. Filter library by rotation state (paid tier)
  *  5. Score all eligible tasks (filtered by household profile + current month)
  *  6. Separate daily stabilisers, weekly, monthly, and quick tasks
- *  7. Place daily stabilisers on every day — capped at 60% of day budget
+ *  7. Place daily stabilisers on every day — capped at 85% of day budget
  *     so weekly tasks always have room
  *  8. Apply zone-anchor score boost; allocate weekly tasks to best-fit days
  *  9. Assign monthly tasks to weekend days
@@ -31,8 +31,9 @@ import { zoneAnchorMultiplier } from '../tasks/zones.js';
 import { TASK_LIBRARY } from '../tasks/library.js';
 
 // Daily stabilisers are capped at this fraction of the day budget.
-// This guarantees weekly tasks always have at least 40% of the budget.
-const STABILIZER_BUDGET_RATIO = 0.60;
+// 0.85 lets the most important 4-7 habits always appear without fully
+// crowding out weekly tasks on days with tight budgets.
+const STABILIZER_BUDGET_RATIO = 0.85;
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,7 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
 
   const placed = new Set<string>();
 
-  // ── Step 7: Place daily stabilisers — 60% budget cap ────────────────────
+  // ── Step 7: Place daily stabilisers — 85% budget cap ────────────────────
   // Cap stabilisers at STABILIZER_BUDGET_RATIO of each day's budget so that
   // weekly tasks always have room. Tasks are placed in priority order (scored
   // highest-first), so the most important ones always make it in.
@@ -178,10 +179,14 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
   }
 
   // ── Step 11: Collect spillover ────────────────────────────────────────────
+  // Cap spillover at 10: show the highest-scored unplaced tasks only.
+  // (Tasks are already sorted by score desc, so slice keeps the best ones.)
+  const MAX_SPILLOVER = 10;
   const allNonDaily = [...weeklyTasks, ...monthlyTasks];
   const spillover: Task[] = allNonDaily
     .filter((s) => !placed.has(s.task.id))
-    .map((s) => s.task);
+    .map((s) => s.task)
+    .slice(0, MAX_SPILLOVER);
 
   // ── Assemble WeekPlan ─────────────────────────────────────────────────────
   const totalScheduled = days.reduce((sum, d) => sum + d.tasks.length, 0);

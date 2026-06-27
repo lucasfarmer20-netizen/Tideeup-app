@@ -22,7 +22,6 @@ export function PricingClient() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Portal state
-  const [portalEmail, setPortalEmail] = useState('');
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
 
@@ -67,8 +66,7 @@ export function PricingClient() {
     }
   }
 
-  async function handlePortal(e: React.FormEvent) {
-    e.preventDefault();
+  async function handlePortal() {
     setPortalLoading(true);
     setPortalError(null);
 
@@ -76,7 +74,6 @@ export function PricingClient() {
       const res = await fetch('/api/stripe/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: portalEmail }),
       });
 
       const data = (await res.json()) as { url?: string } & ApiError;
@@ -265,30 +262,28 @@ export function PricingClient() {
           className="mt-16 rounded-2xl border border-slate-200 bg-white p-8"
         >
           <h2 className="mb-1 text-lg font-semibold text-slate-900">
-            Already a subscriber?
+            Manage your subscription
           </h2>
           <p className="mb-6 text-sm text-slate-500">
-            Enter the email you used to sign up and we&apos;ll open your billing
-            portal where you can update payment details or cancel.
+            Open your billing portal to update payment details or cancel.
           </p>
 
-          <form onSubmit={handlePortal} className="flex gap-3">
-            <input
-              type="email"
-              required
-              placeholder="you@example.com"
-              value={portalEmail}
-              onChange={(e) => setPortalEmail(e.target.value)}
-              className="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            />
+          {hasAccount ? (
             <button
-              type="submit"
+              onClick={handlePortal}
               disabled={portalLoading}
               className="rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-900 disabled:opacity-60"
             >
-              {portalLoading ? 'Opening…' : 'Manage plan'}
+              {portalLoading ? 'Opening…' : 'Manage subscription'}
             </button>
-          </form>
+          ) : (
+            <a
+              href="/auth/signin"
+              className="inline-block rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Sign in to manage your subscription
+            </a>
+          )}
 
           {portalError && (
             <p className="mt-2 text-sm text-red-600">{portalError}</p>

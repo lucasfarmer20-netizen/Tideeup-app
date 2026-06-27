@@ -25,11 +25,12 @@ export default async function PlanPage({ params }: PageProps) {
   let plan: SerializedWeekPlan | null = null;
   let members: string[] = [];
   let isPaid = false;
+  let canComplete = false;
 
   try {
     const supabase = createAdminClient();
     const [planRes, authUser] = await Promise.all([
-      supabase.from('plans').select('id, week_plan, is_claimed, created_at').eq('id', planId).single(),
+      supabase.from('plans').select('id, week_plan, is_claimed, created_at, user_id').eq('id', planId).single(),
       getServerUser(),
     ]);
 
@@ -48,6 +49,8 @@ export default async function PlanPage({ params }: PageProps) {
         .maybeSingle();
 
       if (userRow) {
+        // The viewer can check off tasks only if they own this plan.
+        canComplete = (data as { user_id?: string | null }).user_id === (userRow as { id: string }).id;
         isPaid = (userRow as { tier?: string }).tier === 'paid';
         if (isPaid) {
           const { data: household } = await supabase
@@ -103,7 +106,7 @@ export default async function PlanPage({ params }: PageProps) {
       </div>
 
       <main className="max-w-5xl mx-auto px-4 pt-4 pb-8">
-        <WeekPlanView plan={plan} planId={planId} members={members} isPaid={isPaid} />
+        <WeekPlanView plan={plan} planId={planId} members={members} isPaid={isPaid} canComplete={canComplete} />
       </main>
     </div>
   );

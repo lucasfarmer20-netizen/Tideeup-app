@@ -67,7 +67,15 @@ function HouseholdProfileSection({
   const [householdCount, setCount]        = useState(String(initial?.household_count ?? 2));
   const [pets, setPets]                   = useState(initial?.pets ?? false);
   const [kids, setKids]                   = useState(initial?.kids ?? false);
-  const [timePref, setTimePref]           = useState(initial?.time_preference ?? '20');
+  const [timePref, setTimePref]           = useState(() => {
+    const raw = initial?.time_preference ?? 'steady';
+    if (['quick', 'steady', 'thorough', 'batch'].includes(raw)) return raw;
+    if (raw === '10') return 'quick';
+    if (raw === '20') return 'steady';
+    if (raw === '30') return 'thorough';
+    if (raw === 'BATCH') return 'batch';
+    return 'steady';
+  });
   const [saving, setSaving]               = useState(false);
   const [saved, setSaved]                 = useState(false);
   const [error, setError]                 = useState<string | null>(null);
@@ -85,7 +93,7 @@ function HouseholdProfileSection({
         householdCount: parseInt(householdCount),
         pets,
         kids,
-        timePreference: timePref === 'BATCH' ? 'BATCH' : parseInt(timePref),
+        timePreference: timePref,
         ...(initial ? {
           members: initial.members,
           noGoDays: initial.no_go_days,
@@ -131,10 +139,10 @@ function HouseholdProfileSection({
         <div className="space-y-1.5">
           <label className={labelClass}>Time per day</label>
           <select value={timePref} onChange={(e) => setTimePref(e.target.value)} className={selectClass}>
-            <option value="10">~10 min/day</option>
-            <option value="20">~20 min/day</option>
-            <option value="30">~30 min/day</option>
-            <option value="BATCH">Batch weekends</option>
+            <option value="quick">~15 min/day (Quick)</option>
+            <option value="steady">~30 min/day (Steady)</option>
+            <option value="thorough">~50 min/day (Thorough)</option>
+            <option value="batch">Batch weekends</option>
           </select>
         </div>
       </div>
@@ -511,6 +519,16 @@ function DangerZone() {
 
   async function handleDelete() {
     setDeleting(true);
+    try {
+      const res = await fetch('/api/user/delete', { method: 'DELETE' });
+      if (!res.ok) {
+        setDeleting(false);
+        return;
+      }
+    } catch {
+      setDeleting(false);
+      return;
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/');

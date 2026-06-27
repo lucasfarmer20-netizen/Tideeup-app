@@ -1,7 +1,7 @@
 import type { Task } from '../engine/types.js';
 
 /**
- * Canonical household task library — 83 tasks.
+ * Canonical household task library — 78 tasks.
  *
  * Design notes:
  * - typicalMinutes: explicit active-work estimates per home size (S/M/L/XL).
@@ -119,11 +119,11 @@ export const TASK_LIBRARY: Task[] = [
     id: 'dryer-lint-trap',
     title: 'Clean dryer lint trap',
     zone: 'laundry',
-    frequency: 'daily',
+    frequency: 'weekly',
     typicalMinutes: { S: 2, M: 2, L: 2, XL: 2 },
     chaosImpact: 0.05,
     fatigueCost: 0.03,
-    tags: ['stabilizer', 'quick', 'maintenance'],
+    tags: ['quick', 'maintenance'],
     flooringTypes: null,
     petTypes: null,
     seasonalMonths: null,
@@ -323,7 +323,7 @@ export const TASK_LIBRARY: Task[] = [
     id: 'wipe-fridge-exterior',
     title: 'Wipe refrigerator exterior and handles',
     zone: 'kitchen',
-    frequency: 'weekly',
+    frequency: 'monthly',
     typicalMinutes: { S: 4, M: 6, L: 7, XL: 8 },
     chaosImpact: 0.20,
     fatigueCost: 0.08,
@@ -394,7 +394,7 @@ export const TASK_LIBRARY: Task[] = [
     fatigueCost: 0.25,
     tags: ['core'],
     kidsBoost: 3,
-    flooringTypes: ['tile'],
+    flooringTypes: ['tile', 'mixed'],
     petTypes: null,
     seasonalMonths: null,
     homeTypes: null,
@@ -431,7 +431,7 @@ export const TASK_LIBRARY: Task[] = [
     id: 'clean-bathroom-mirror',
     title: 'Clean bathroom mirror',
     zone: 'bathroom',
-    frequency: 'weekly',
+    frequency: 'monthly',
     typicalMinutes: { S: 4, M: 5, L: 5, XL: 6 },
     chaosImpact: 0.10,
     fatigueCost: 0.05,
@@ -446,7 +446,7 @@ export const TASK_LIBRARY: Task[] = [
     id: 'restock-toiletries',
     title: 'Restock toiletries and check supplies',
     zone: 'bathroom',
-    frequency: 'weekly',
+    frequency: 'monthly',
     typicalMinutes: { S: 2, M: 3, L: 4, XL: 5 },
     chaosImpact: 0.10,
     fatigueCost: 0.03,
@@ -607,7 +607,7 @@ export const TASK_LIBRARY: Task[] = [
     id: 'wipe-electronics-remotes',
     title: 'Wipe down electronics and remotes',
     zone: 'living',
-    frequency: 'weekly',
+    frequency: 'monthly',
     typicalMinutes: { S: 5, M: 6, L: 7, XL: 8 },
     chaosImpact: 0.10,
     fatigueCost: 0.05,
@@ -789,7 +789,7 @@ export const TASK_LIBRARY: Task[] = [
     title: 'Clean cage or tank (small animals)',
     zone: 'general',
     frequency: 'weekly',
-    typicalMinutes: { S: 20, M: 25, L: 30, XL: 35 },
+    typicalMinutes: { S: 25, M: 25, L: 25, XL: 25 },
     chaosImpact: 0.10,
     fatigueCost: 0.40,
     tags: ['pet'],
@@ -901,7 +901,7 @@ export const TASK_LIBRARY: Task[] = [
     title: 'Descale coffee maker',
     zone: 'kitchen',
     frequency: 'monthly',
-    typicalMinutes: { S: 12, M: 16, L: 18, XL: 20 },
+    typicalMinutes: { S: 15, M: 15, L: 15, XL: 15 },
     chaosImpact: 0.05,
     fatigueCost: 0.10,
     tags: ['maintenance', 'quick'],
@@ -1094,7 +1094,7 @@ export const TASK_LIBRARY: Task[] = [
 
   {
     id: 'clean-washing-machine-drum',
-    title: 'Clean washing machine drum and door seal',
+    title: 'Deep clean washing machine (drum, seal & filter)',
     zone: 'laundry',
     frequency: 'monthly',
     typicalMinutes: { S: 12, M: 15, L: 18, XL: 20 },
@@ -1109,7 +1109,7 @@ export const TASK_LIBRARY: Task[] = [
   },
   {
     id: 'wipe-washer-door-seal',
-    title: 'Wipe washer drum and gasket',
+    title: 'Quick wipe washer door seal & gasket',
     zone: 'laundry',
     frequency: 'monthly',
     typicalMinutes: { S: 7, M: 9, L: 10, XL: 12 },
