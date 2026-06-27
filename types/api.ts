@@ -77,6 +77,37 @@ export interface CompleteWeekResponse {
   streak: StreakData;
 }
 
+// ─── /api/plan/[planId]/completions ──────────────────────────────────────────
+
+export interface TaskCompletion {
+  taskId: string;
+  /** 0-based index into weekPlan.days for the day this task was scheduled. */
+  dayIndex: number;
+}
+
+/** GET — current per-task completion state for a plan. */
+export interface TaskCompletionsResponse {
+  completions: TaskCompletion[];
+  /** Total number of (day, task) checkboxes across the plan. */
+  total: number;
+}
+
+export interface ToggleCompletionRequest {
+  taskId: string;
+  dayIndex: number;
+  done: boolean;
+}
+
+/** POST — result of toggling a single task complete/incomplete. */
+export interface ToggleCompletionResponse {
+  completed: number;
+  total: number;
+  /** True when this toggle checked off the final task and finalized the week. */
+  autoCompleted: boolean;
+  /** Present only when autoCompleted is true. */
+  streak?: StreakData;
+}
+
 // ─── POST /api/stripe/portal ─────────────────────────────────────────────────
 
 export interface PortalRequest {

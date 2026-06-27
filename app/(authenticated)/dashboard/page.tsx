@@ -5,6 +5,8 @@ import { getServerUser } from '@/lib/supabase/session.js';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import { CompleteWeekButton } from '@/components/dashboard/CompleteWeekButton';
 import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner';
+import { ProgressRing } from '@/components/dashboard/ProgressRing';
+import { streakMilestone, formatHours } from '@/lib/stats/milestones.js';
 import type { SerializedWeekPlan, SerializedDayPlan } from '@/utils/serialize';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -68,10 +70,17 @@ export default async function DashboardPage({
 
   let currentPlan: { id: string; week_plan: SerializedWeekPlan } | null = null;
   let streakCount = 0;
+  let longestStreak = 0;
+
+  // Cumulative progress stats (LTV task 2)
+  let lifetimeTasks = 0;
+  let lifetimeMinutes = 0;
+  let weekCompletedCount = 0;
 
   let members: string[] = [];
   let assignments: Record<string, string> = {};
   let seasonOverride: string | null = null;
+  let rotationLastDone: Record<string, string> = {};
 
   if (user) {
     // If a specific planId was passed (e.g. right after quiz completion), load
@@ -80,24 +89,40 @@ export default async function DashboardPage({
       ? supabase.from('plans').select('id, week_plan').eq('user_id', user.id).eq('id', specificPlanId).maybeSingle()
       : supabase.from('plans').select('id, week_plan').eq('user_id', user.id).eq('week_of', mondayISO).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
-    const [planRes, streakRes, householdRes] = await Promise.all([
+    const [planRes, streakRes, householdRes, completionRes] = await Promise.all([
       planQuery,
       supabase
         .from('streaks')
-        .select('current_streak')
+        .select('current_streak, longest_streak')
         .eq('user_id', user.id)
         .maybeSingle(),
       supabase
         .from('households')
-        .select('members, season_override')
+        .select('members, season_override, rotation_state')
         .eq('user_id', user.id)
         .maybeSingle(),
+      // Lifetime check-offs for cumulative stats (LTV task 2).
+      supabase
+        .from('task_completions')
+        .select('plan_id, minutes')
+        .eq('user_id', user.id),
     ]);
 
     currentPlan = planRes.data as { id: string; week_plan: SerializedWeekPlan } | null;
     streakCount = streakRes.data?.current_streak ?? 0;
+    longestStreak = (streakRes.data as { longest_streak?: number } | null)?.longest_streak ?? 0;
     members = (householdRes.data as { members?: string[] } | null)?.members ?? [];
     seasonOverride = (householdRes.data as { season_override?: string | null } | null)?.season_override ?? null;
+    rotationLastDone =
+      (householdRes.data as { rotation_state?: { lastDone?: Record<string, string> } | null } | null)
+        ?.rotation_state?.lastDone ?? {};
+
+    const completionRows = (completionRes.data ?? []) as { plan_id: string; minutes: number }[];
+    lifetimeTasks = completionRows.length;
+    lifetimeMinutes = completionRows.reduce((sum, r) => sum + (r.minutes ?? 0), 0);
+    if (currentPlan) {
+      weekCompletedCount = completionRows.filter((r) => r.plan_id === currentPlan!.id).length;
+    }
 
     // Load today's assignments for member grouping
     if (currentPlan && members.length > 0) {
@@ -124,6 +149,33 @@ export default async function DashboardPage({
     ? `${seasonOverride.charAt(0).toUpperCase() + seasonOverride.slice(1)} mode`
     : season ? `Auto: ${season.charAt(0).toUpperCase() + season.slice(1)}` : null;
 
+  // Progress layer (LTV task 2)
+  const weekTotal = currentPlan
+    ? currentPlan.week_plan.days.reduce((sum, d) => sum + d.tasks.length, 0)
+    : 0;
+  const weekPct = weekTotal > 0 ? Math.round((weekCompletedCount / weekTotal) * 100) : 0;
+  const milestone = streakMilestone(streakCount);
+
+  // "Coming back this week" rotation visibility (LTV task 4) — featured tasks in
+  // this week's plan that haven't been done in 3+ weeks, longest gap first.
+  const comingBack: { title: string; weeksAgo: number }[] = [];
+  if (currentPlan && isPaid) {
+    const ref = new Date(mondayISO).getTime();
+    const seen = new Set<string>();
+    for (const day of currentPlan.week_plan.days) {
+      for (const t of day.tasks) {
+        if (t.task.frequency === 'daily' || seen.has(t.task.id)) continue;
+        seen.add(t.task.id);
+        const iso = rotationLastDone[t.task.id];
+        if (!iso) continue;
+        const weeksAgo = Math.floor((ref - new Date(iso).getTime()) / (7 * 24 * 60 * 60 * 1000));
+        if (weeksAgo >= 3) comingBack.push({ title: t.task.title, weeksAgo });
+      }
+    }
+    comingBack.sort((a, b) => b.weeksAgo - a.weeksAgo);
+  }
+  const topComingBack = comingBack.slice(0, 4);
+
   return (
     <main className="max-w-3xl mx-auto px-4 py-10 space-y-8">
       {/* Post-checkout upgrade banner */}
@@ -143,6 +195,38 @@ export default async function DashboardPage({
           </div>
         )}
       </div>
+
+      {/* Progress layer (LTV task 2) — only once the user has checked something off */}
+      {(lifetimeTasks > 0 || weekTotal > 0) && (
+        <div className="rounded-xl border bg-card shadow-sm p-6">
+          <div className="flex items-center gap-6">
+            <ProgressRing
+              percent={weekPct}
+              label={`${weekPct}%`}
+              sublabel="this week"
+            />
+            <div className="grid grid-cols-3 gap-4 flex-1 text-center">
+              <div>
+                <p className="text-2xl font-bold">{lifetimeTasks}</p>
+                <p className="text-xs text-muted-foreground">tasks done</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{formatHours(lifetimeMinutes)}</p>
+                <p className="text-xs text-muted-foreground">invested</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{Math.max(streakCount, longestStreak)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {streakCount >= longestStreak && streakCount > 0 ? 'week streak' : 'best streak'}
+                </p>
+              </div>
+            </div>
+          </div>
+          {milestone && (
+            <p className="mt-4 text-center text-sm font-medium text-primary">{milestone}</p>
+          )}
+        </div>
+      )}
 
       {!currentPlan ? (
         /* No plan for this week */
@@ -253,6 +337,29 @@ export default async function DashboardPage({
             </Link>
             <CompleteWeekButton planId={currentPlan.id} />
           </div>
+
+          {/* Coming back this week — rotation memory made visible (LTV task 4) */}
+          {topComingBack.length > 0 && (
+            <div className="rounded-xl border bg-card shadow-sm p-6 space-y-3">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold">Coming back around this week</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tasks your rotation hasn't surfaced in a while — back on the schedule now.
+              </p>
+              <ul className="space-y-2">
+                {topComingBack.map((t) => (
+                  <li key={t.title} className="flex items-center justify-between text-sm">
+                    <span>{t.title}</span>
+                    <span className="text-muted-foreground shrink-0 ml-4">
+                      last done {t.weeksAgo} weeks ago
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </>
       )}
 

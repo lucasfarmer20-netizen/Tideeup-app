@@ -38,15 +38,50 @@ const ZONE_LABEL: Record<string, string> = {
 };
 
 function buildSundayEmailHtml({
-  planUrl, primaryZone, mondayTasks, streak,
+  planUrl, primaryZone, mondayTasks, streak, lastWeekPct, rotationInsights, members,
 }: {
   planUrl: string;
   primaryZone: string;
   mondayTasks: { title: string; estimatedMinutes: number }[];
   streak: number;
+  /** Last week's completion rate (0–100), or null if there was no prior plan. */
+  lastWeekPct: number | null;
+  /** Tasks resurfacing this week after a gap (rotation memory made visible). */
+  rotationInsights: { title: string; weeksAgo: number }[];
+  /** Household member names, for the assignment nudge. */
+  members: string[];
 }): string {
   const streakBadge = streak >= 2
     ? `<p style="font-size:13px;color:#0D9488;font-weight:700;margin:0 0 16px;">🔥 ${streak}-week streak — keep it going!</p>`
+    : '';
+
+  // Last week's completion rate — the personal progress hook.
+  const lastWeekBlock = lastWeekPct !== null
+    ? `<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px 18px;margin-bottom:20px;">
+        <p style="color:#047857;font-size:14px;margin:0;font-weight:600;">
+          ${lastWeekPct >= 80 ? '🎉 ' : ''}Last week you completed ${lastWeekPct}% of your tasks${lastWeekPct >= 80 ? ' — outstanding!' : lastWeekPct >= 50 ? ' — solid work.' : '. A fresh week, a fresh start.'}
+        </p>
+      </div>`
+    : '';
+
+  // Rotation insights — surface what's coming back around this week.
+  const rotationBlock = rotationInsights.length > 0
+    ? `<p style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;">Coming back around this week</p>
+      <ul style="margin:0 0 24px;padding-left:20px;">
+        ${rotationInsights.map((r) =>
+          `<li style="color:#334155;font-size:14px;margin:4px 0;">${r.title} <span style="color:#94a3b8;">(last done ${r.weeksAgo} weeks ago)</span></li>`,
+        ).join('')}
+      </ul>`
+    : '';
+
+  // Member assignment nudge for multi-person households.
+  const membersBlock = members.length > 1
+    ? `<div style="background:#f8fafc;border-radius:10px;padding:12px 18px;margin-bottom:20px;">
+        <p style="color:#64748b;font-size:13px;margin:0;">
+          Split the load with ${members.slice(0, -1).join(', ')} and ${members[members.length - 1]} —
+          <a href="${planUrl}" style="color:#0D9488;">assign this week's tasks &rarr;</a>
+        </p>
+      </div>`
     : '';
 
   const taskRows = mondayTasks.slice(0, 4).map((t) =>
@@ -63,10 +98,16 @@ function buildSundayEmailHtml({
 
   ${streakBadge}
 
+  ${lastWeekBlock}
+
   <div style="background:#f8fafc;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
     <p style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">This week's focus</p>
     <p style="color:#0f172a;font-size:18px;font-weight:700;margin:0;">${ZONE_LABEL[primaryZone] ?? primaryZone}</p>
   </div>
+
+  ${membersBlock}
+
+  ${rotationBlock}
 
   <p style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;">Monday's tasks</p>
   <ul style="margin:0 0 24px;padding-left:20px;">
@@ -134,7 +175,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Get household config
       const { data: household } = await supabase
         .from('households')
-        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state')
+        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state, members')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -180,6 +221,51 @@ export async function GET(request: Request): Promise<NextResponse> {
 
       const weekPlan = generateWeekPlan(plannerInput);
       const serialized = serializeWeekPlan(weekPlan);
+
+      // ── Last week's completion rate (LTV task 3) ──────────────────────────
+      // The most recent existing plan is last week's (the new one isn't saved yet).
+      let lastWeekPct: number | null = null;
+      const { data: prevPlan } = await supabase
+        .from('plans')
+        .select('id, week_plan')
+        .eq('user_id', user.id)
+        .order('week_of', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (prevPlan) {
+        const prevWeekPlan = (prevPlan as { week_plan: SerializedWeekPlan }).week_plan;
+        const prevTotal = prevWeekPlan.days.reduce((sum, d) => sum + d.tasks.length, 0);
+        const { count } = await supabase
+          .from('task_completions')
+          .select('*', { count: 'exact', head: true })
+          .eq('plan_id', (prevPlan as { id: string }).id);
+        if (prevTotal > 0) lastWeekPct = Math.round(((count ?? 0) / prevTotal) * 100);
+      }
+
+      // ── Rotation insights (LTV task 3) ────────────────────────────────────
+      // Featured tasks resurfacing this week after a 3+ week gap.
+      const lastDone = plannerInput.rotationState?.lastDone ?? {};
+      const seenInsight = new Set<string>();
+      const rotationInsights: { title: string; weeksAgo: number }[] = [];
+      for (const day of serialized.days) {
+        for (const t of day.tasks) {
+          if (t.task.frequency === 'daily' || seenInsight.has(t.task.id)) continue;
+          seenInsight.add(t.task.id);
+          const iso = lastDone[t.task.id];
+          if (!iso) continue;
+          const weeksAgo = Math.floor(
+            (weekOf.getTime() - new Date(iso).getTime()) / (7 * 24 * 60 * 60 * 1000),
+          );
+          if (weeksAgo >= 3) rotationInsights.push({ title: t.task.title, weeksAgo });
+        }
+      }
+      rotationInsights.sort((a, b) => b.weeksAgo - a.weeksAgo);
+      const topInsights = rotationInsights.slice(0, 3);
+
+      const members = Array.isArray((household as { members?: string[] }).members)
+        ? (household as { members: string[] }).members
+        : [];
 
       // Save plan
       const { data: savedPlan, error: planError } = await supabase
@@ -229,6 +315,9 @@ export async function GET(request: Request): Promise<NextResponse> {
           primaryZone,
           mondayTasks,
           streak: streak?.current_streak ?? 0,
+          lastWeekPct,
+          rotationInsights: topInsights,
+          members,
         }),
       });
 

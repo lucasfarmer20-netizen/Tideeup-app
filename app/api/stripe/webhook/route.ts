@@ -97,6 +97,14 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
         })
         .eq('id', userId);
 
+      // Stamp paid_since once (first upgrade only) to anchor the onboarding
+      // sequence — re-subscribing won't replay it. (LTV task 5)
+      await supabase
+        .from('users')
+        .update({ paid_since: new Date().toISOString() })
+        .eq('id', userId)
+        .is('paid_since', null);
+
       break;
     }
 

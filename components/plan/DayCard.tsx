@@ -36,9 +36,24 @@ interface DayCardProps {
   members?: string[];
   assignments?: Record<string, string>;
   onAssign?: (taskId: string, member: string | null) => void;
+  /** Per-task completion (LTV task 1) */
+  dayIndex?: number;
+  canComplete?: boolean;
+  completedKeys?: Set<string>;
+  onToggleTask?: (dayIndex: number, taskId: string, done: boolean) => void;
 }
 
-export function DayCard({ day, isToday = false, members, assignments, onAssign }: DayCardProps) {
+export function DayCard({
+  day,
+  isToday = false,
+  members,
+  assignments,
+  onAssign,
+  dayIndex,
+  canComplete = false,
+  completedKeys,
+  onToggleTask,
+}: DayCardProps) {
   const dayName = FULL_DAY_NAMES[day.dayOfWeek] ?? 'Unknown';
   const shortName = DAY_NAMES[day.dayOfWeek] ?? '?';
   const zone = getPrimaryZone(day);
@@ -48,6 +63,16 @@ export function DayCard({ day, isToday = false, members, assignments, onAssign }
   const stabilisers = day.tasks.filter((t) => t.task.frequency === 'daily');
   const featured = day.tasks.filter((t) => t.task.frequency !== 'daily');
   const isEmpty = day.tasks.length === 0;
+
+  // Per-task completion props for a given task id (LTV task 1).
+  const completionProps = (taskId: string) =>
+    canComplete && dayIndex !== undefined && onToggleTask
+      ? {
+          canComplete: true,
+          completed: completedKeys?.has(`${dayIndex}:${taskId}`) ?? false,
+          onToggle: (done: boolean) => onToggleTask(dayIndex, taskId, done),
+        }
+      : {};
 
   return (
     <div
@@ -91,6 +116,7 @@ export function DayCard({ day, isToday = false, members, assignments, onAssign }
                 {...(members ? { members } : {})}
                 {...(assignments?.[t.task.id] ? { assignment: assignments[t.task.id] } : {})}
                 {...(onAssign ? { onAssign } : {})}
+                {...completionProps(t.task.id)}
               />
             ))}
             {stabilisers.length > 0 && featured.length > 0 && (
@@ -106,6 +132,7 @@ export function DayCard({ day, isToday = false, members, assignments, onAssign }
                     {...(members ? { members } : {})}
                     {...(assignments?.[t.task.id] ? { assignment: assignments[t.task.id] } : {})}
                     {...(onAssign ? { onAssign } : {})}
+                    {...completionProps(t.task.id)}
                   />
                 ))}
               </div>
