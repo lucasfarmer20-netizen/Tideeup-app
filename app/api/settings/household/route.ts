@@ -15,7 +15,10 @@ const schema = z.object({
   householdCount: z.number().int().min(1).max(6).optional(),
   pets:           z.boolean().optional(),
   kids:           z.boolean().optional(),
-  timePreference: z.union([z.literal(10), z.literal(20), z.literal(30), z.literal('BATCH')]).optional(),
+  timePreference: z.union([
+    z.enum(['quick', 'steady', 'thorough', 'batch']),
+    z.literal(10), z.literal(20), z.literal(30), z.literal('BATCH'),
+  ]).optional(),
   members:        z.array(z.string().min(1).max(50)).max(10).optional(),
   noGoDays:       z.array(z.number().int().min(0).max(6)).optional(),
   seasonOverride: z.enum(['spring', 'summer', 'fall', 'winter']).nullable().optional(),
@@ -61,6 +64,15 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
   const { homeSize, householdCount, pets, kids, timePreference, members, noGoDays, seasonOverride } = parsed.data;
   const supabase = createAdminClient();
+
+  // Gate paid-only fields behind tier check
+  const paidFieldsPresent = members !== undefined || noGoDays !== undefined || 'seasonOverride' in parsed.data;
+  if (paidFieldsPresent) {
+    const { data: userRow } = await supabase.from('users').select('tier').eq('id', userId).maybeSingle();
+    if ((userRow as { tier?: string } | null)?.tier !== 'paid') {
+      return NextResponse.json({ message: 'Pro subscription required' }, { status: 403 });
+    }
+  }
 
   // Build the patch object — only include fields that were sent
   const patch: Record<string, unknown> = { user_id: userId };

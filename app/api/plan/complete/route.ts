@@ -77,6 +77,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ message: 'Plan not found' }, { status: 404 });
     }
 
+    // Idempotency: prevent double-completion and streak farming
+    if (plan.completed_at) {
+      return NextResponse.json(
+        { message: 'This plan has already been marked as completed.' },
+        { status: 400 },
+      );
+    }
+
     // Stamp completed_at on the plan record
     await supabase
       .from('plans')

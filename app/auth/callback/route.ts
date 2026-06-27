@@ -17,7 +17,9 @@ import { createAdminClient } from '@/lib/supabase/server.js';
 export async function GET(request: Request): Promise<NextResponse> {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') ?? '/';
+  const rawNext = requestUrl.searchParams.get('next') ?? '/';
+  // Only allow relative paths — reject absolute URLs and protocol-relative URLs
+  const next = (rawNext.startsWith('/') && !rawNext.startsWith('//')) ? rawNext : '/';
 
   if (code) {
     const cookieStore = await cookies();

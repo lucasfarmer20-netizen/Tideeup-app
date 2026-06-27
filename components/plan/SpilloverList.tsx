@@ -1,11 +1,12 @@
 import { AlertCircle } from 'lucide-react';
-import type { Task } from '@/lib/engine/types.js';
+import type { Task, HomeSize } from '@/lib/engine/types.js';
 
 interface SpilloverListProps {
   tasks: Task[];
+  homeSize?: HomeSize | undefined;
 }
 
-export function SpilloverList({ tasks }: SpilloverListProps) {
+export function SpilloverList({ tasks, homeSize = 'M' }: SpilloverListProps) {
   if (tasks.length === 0) return null;
 
   return (
@@ -24,7 +25,7 @@ export function SpilloverList({ tasks }: SpilloverListProps) {
           <li key={task.id} className="flex items-center gap-2 text-sm text-amber-700">
             <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
             {task.title}
-            <span className="text-xs text-amber-500 ml-auto">{task.typicalMinutes.M}m+</span>
+            <span className="text-xs text-amber-500 ml-auto">{task.typicalMinutes[homeSize]}m+</span>
           </li>
         ))}
       </ul>

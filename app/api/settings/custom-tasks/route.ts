@@ -52,6 +52,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   const { title, zone, frequency, estimatedMinutes } = parsed.data;
   const supabase = createAdminClient();
 
+  // Gate: custom tasks are a paid feature
+  const { data: userRow } = await supabase.from('users').select('tier').eq('id', userId).maybeSingle();
+  if ((userRow as { tier?: string } | null)?.tier !== 'paid') {
+    return NextResponse.json({ message: 'Pro subscription required' }, { status: 403 });
+  }
+
   const { data, error } = await supabase
     .from('custom_tasks')
     .insert({ user_id: userId, title, zone, frequency, estimated_minutes: estimatedMinutes })

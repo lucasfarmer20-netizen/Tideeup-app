@@ -19,6 +19,8 @@ interface WeekPlanViewProps {
   /** Paid tier: household member names for task assignment */
   members?: string[];
   isPaid?: boolean;
+  /** Home size for accurate time estimates in spillover list */
+  homeSize?: import('@/lib/engine/types.js').HomeSize;
 }
 
 const SEASON_EMOJI: Record<string, string> = {
@@ -45,13 +47,13 @@ function isToday(day: WeekPlan['days'][number]): boolean {
   const d = getDayDate(day);
   const now = new Date();
   return (
-    d.getUTCFullYear() === now.getFullYear() &&
-    d.getUTCMonth() === now.getMonth() &&
-    d.getUTCDate() === now.getDate()
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate()
   );
 }
 
-export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members, isPaid = false }: WeekPlanViewProps) {
+export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members, isPaid = false, homeSize }: WeekPlanViewProps) {
   const plan: WeekPlan = 'weekOf' in rawPlan && rawPlan.weekOf instanceof Date
     ? rawPlan as WeekPlan
     : deserializeWeekPlan(rawPlan as SerializedWeekPlan);
@@ -141,7 +143,7 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
 
       {/* Spillover */}
       {!isBlurred && plan.spillover.length > 0 && (
-        <SpilloverList tasks={plan.spillover} />
+        <SpilloverList tasks={plan.spillover} homeSize={homeSize} />
       )}
 
       {/* Locked feature gates — only for free users */}

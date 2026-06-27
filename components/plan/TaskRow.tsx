@@ -23,7 +23,7 @@ export function TaskRow({ scheduledTask, members, assignment, onAssign }: TaskRo
             onChange={(e) => onAssign(task.id, e.target.value || null)}
             className="mt-0.5 text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground"
           >
-            <option value="">— assign to</option>
+            <option value="">— assign to…</option>
             {members.map((m) => (
               <option key={m} value={m}>{m}</option>
             ))}

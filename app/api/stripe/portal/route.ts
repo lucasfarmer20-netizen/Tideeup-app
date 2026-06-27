@@ -1,29 +1,15 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { getStripe } from '@/lib/stripe/client.js';
 import { createAdminClient } from '@/lib/supabase/server.js';
+import { getServerUser } from '@/lib/supabase/session.js';
 
-const schema = z.object({
-  email: z.string().email('Invalid email address'),
-});
-
-export async function POST(request: Request): Promise<NextResponse> {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
+export async function POST(): Promise<NextResponse> {
+  const authUser = await getServerUser();
+  if (!authUser?.email) {
+    return NextResponse.json({ message: 'Sign in to manage your subscription.' }, { status: 401 });
   }
 
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { message: parsed.error.errors[0]?.message ?? 'Invalid input' },
-      { status: 400 },
-    );
-  }
-
-  const { email } = parsed.data;
+  const email = authUser.email;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tideeup.com';
 
   try {
@@ -37,7 +23,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     if (!user || user.tier !== 'paid') {
       return NextResponse.json(
-        { message: 'No active subscription found for that email address.' },
+        { message: 'No active subscription found.' },
         { status: 404 },
       );
     }
