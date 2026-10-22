@@ -3,8 +3,9 @@ import type Stripe from 'stripe';
 import { getStripe } from '@/lib/stripe/client.js';
 import { createAdminClient } from '@/lib/supabase/server.js';
 
-// Disable Next.js body parsing — Stripe needs the raw body to verify the signature.
-export const config = { api: { bodyParser: false } };
+// App Router route handlers receive the raw body via request.text(), which is
+// what Stripe needs for signature verification — no body-parser config needed.
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request): Promise<NextResponse> {
   const sig = request.headers.get('stripe-signature');
@@ -23,12 +24,33 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ message: 'Invalid signature' }, { status: 400 });
   }
 
+  // Idempotency: Stripe retries deliveries, so claim the event id before doing
+  // any work. A duplicate insert means we've already handled it.
+  const supabase = createAdminClient();
+  const { error: claimError } = await supabase
+    .from('stripe_events')
+    .insert({ id: event.id, type: event.type });
+
+  if (claimError) {
+    if (claimError.code === '23505') {
+      // unique_violation — already processed
+      return NextResponse.json({ received: true, duplicate: true }, { status: 200 });
+    }
+    // Table missing or DB down: return 500 so Stripe retries later rather
+    // than silently dropping a billing event.
+    console.error('[TideeUp] Webhook idempotency claim failed:', claimError);
+    return NextResponse.json({ message: 'Temporary failure' }, { status: 500 });
+  }
+
   try {
     await handleEvent(event);
   } catch (err) {
     // Log but return 200 — Stripe will retry on 5xx, and a permanent failure
     // should not trigger endless retries for application-level errors.
     console.error(`[TideeUp] Webhook handler error for ${event.type}:`, err);
+    // Release the claim so a manual "resend" from the Stripe dashboard can
+    // reprocess this event once the underlying problem is fixed.
+    await supabase.from('stripe_events').delete().eq('id', event.id);
   }
 
   return NextResponse.json({ received: true }, { status: 200 });

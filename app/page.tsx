@@ -291,10 +291,10 @@ export default function LandingPage() {
       </main>
       <footer className="border-t bg-muted/30">
         <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <span>© 2025 TideeUp. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} TideeUp. All rights reserved.</span>
           <div className="flex gap-6">
-            <Link href="#" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           </div>
         </div>
       </footer>
