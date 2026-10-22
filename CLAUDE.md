@@ -78,6 +78,8 @@ const isPaidUser = userRow?.tier === 'paid';
 
 Stripe webhook (`app/api/stripe/webhook/route.ts`) sets `tier = 'paid'` on `checkout.session.completed` and reverts it on `customer.subscription.deleted`. Never gate features on Stripe data directly — always read `users.tier`.
 
+The webhook is idempotent: each Stripe `event.id` is inserted into `stripe_events` (migration 0010) before processing, and a duplicate is acknowledged without re-running the handler. The production Stripe endpoint must subscribe to `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`.
+
 ---
 
 ## Multi-tenancy design
@@ -126,8 +128,12 @@ Create `.env.local` in the project root. All values are required in production.
 | `STRIPE_WEBHOOK_SECRET` | Printed by `stripe listen` locally; or Stripe dashboard → Developers → Webhooks → signing secret for prod endpoint |
 | `NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID` | Stripe dashboard → Products → TideeUp Pro → Monthly price ID |
 | `NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID` | Stripe dashboard → Products → TideeUp Pro → Annual price ID |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe dashboard → Developers → API keys → Publishable key |
 | `RESEND_API_KEY` | Resend dashboard → API Keys |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` locally; production domain on Vercel |
+| `RESEND_FROM_EMAIL` | Sender address, e.g. `plans@tideeup.com`. The domain must be verified in Resend (SPF + DKIM) or mail lands in spam. |
+| `CRON_SECRET` | `openssl rand -hex 32`. Vercel sends it as `Authorization: Bearer <secret>` to the two cron routes in `vercel.json`; both return 401 without it. |
+| `SUPABASE_DB_URL` | Settings → Database → Connection string (URI, port 5432). Only used by `npm run db:migrate` — does **not** need to be set on Vercel. |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` locally; `https://tideeup.com` on Vercel. Drives email links, Stripe redirect URLs, `metadataBase`, robots and sitemap. |
 
 ---
 
