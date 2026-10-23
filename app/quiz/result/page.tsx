@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, BookmarkCheck, Sparkles } from 'lucide-react';
 import { WeekPlanView } from '@/components/plan/WeekPlanView';
 import { EmailRevealGate } from '@/components/reveal/EmailRevealGate';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,9 +48,10 @@ function ResultContent() {
   // null = auth check in progress (prevents gate flash for signed-in users)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [capturedEmail, setCapturedEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Bug 1 fix: check auth state on mount; authenticated users skip the gate
+  // Check auth state on mount; authenticated users skip the gate
   // and are sent straight to the dashboard (plan is already saved to their account).
   useEffect(() => {
     createClient()
@@ -100,15 +101,19 @@ function ResultContent() {
       .catch(() => setError('Failed to load your plan. Please try again.'));
   }, [planId]);
 
-  const handleReveal = useCallback(() => {
-    setIsRevealed(true);
-    // Update the URL for bookmarking without navigating away.
-    // Staying on this page keeps the upgrade prompts (LockedFeature blocks)
-    // visible immediately after the reveal.
-    if (planId) {
-      window.history.replaceState(null, '', `/plan/${planId}`);
-    }
-  }, [planId]);
+  const handleReveal = useCallback(
+    (email?: string) => {
+      if (email) setCapturedEmail(email);
+      setIsRevealed(true);
+      // Update the URL for bookmarking without navigating away.
+      // Staying on this page keeps the upgrade prompts (LockedFeature blocks)
+      // visible immediately after the reveal.
+      if (planId) {
+        window.history.replaceState(null, '', `/plan/${planId}`);
+      }
+    },
+    [planId],
+  );
 
   if (!planId) {
     // Auth check is still in-flight — show skeleton while the redirect resolves
@@ -135,38 +140,47 @@ function ResultContent() {
     );
   }
 
+  const pricingHref = capturedEmail
+    ? `/pricing?email=${encodeURIComponent(capturedEmail)}`
+    : '/pricing';
+
   return (
     <div className="relative">
       {!plan ? (
         <PlanSkeleton />
       ) : (
         <>
-          {/* Plan content — blurred until revealed (or until auth check resolves) */}
-          <div
-            className={`transition-all duration-700 ${
-              isRevealed ? 'blur-0' : 'blur-md select-none pointer-events-none'
-            }`}
-          >
-            <WeekPlanView plan={plan} planId={planId ?? undefined} isBlurred={!isRevealed} />
-          </div>
+          {/* WeekPlanView keeps the top Week Header crisp and blurs the 7-day grid until revealed */}
+          <WeekPlanView plan={plan} planId={planId ?? undefined} isBlurred={!isRevealed} />
 
           {/* Email gate overlay — only for anonymous users */}
           {!isRevealed && isAuthenticated === false && planId && (
-            <EmailRevealGate planId={planId} onReveal={handleReveal} />
+            <EmailRevealGate
+              planId={planId}
+              onReveal={handleReveal}
+              totalTasks={plan.metadata.totalTasksScheduled}
+              totalMinutes={plan.metadata.totalMinutesPlanned}
+            />
           )}
 
-          {/* Post-reveal CTA strip */}
+          {/* Post-reveal confirmation & Pro upgrade banner */}
           {isRevealed && (
-            <div className="mt-8 rounded-xl bg-primary/5 border border-primary/20 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
-              <div>
-                <p className="font-semibold">Bookmark this page</p>
+            <div className="mt-8 rounded-2xl bg-surface border-2 border-primary/25 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <BookmarkCheck className="w-4 h-4 text-primary shrink-0" />
+                  <p className="font-semibold">
+                    Plan unlocked{capturedEmail ? ` & sent to ${capturedEmail}` : ''}
+                  </p>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Come back each Monday — your plan lives at this URL.
+                  Want TideeUp to remember what you cleaned this week, assign tasks to family members, and send a fresh plan every Sunday?
                 </p>
               </div>
-              <Button asChild size="sm">
-                <Link href="/">
-                  Learn about Pro
+              <Button asChild size="default" className="shrink-0 w-full sm:w-auto">
+                <Link href={pricingHref}>
+                  <Sparkles className="w-4 h-4" />
+                  Upgrade to Pro — from $5/mo
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
@@ -183,9 +197,17 @@ function ResultContent() {
 export default function QuizResultPage() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-white sticky top-0 z-10">
+      <header className="border-b border-border/60 bg-surface/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-primary">TideeUp</Link>
+          <Link href="/" className="text-2xl font-display font-semibold text-primary">
+            TideeUp
+          </Link>
+          <Link
+            href="/pricing"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Explore Pro →
+          </Link>
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-8">

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Printer, CalendarDays } from 'lucide-react';
+import Link from 'next/link';
+import { Printer, CalendarDays, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DayCard } from './DayCard';
@@ -21,7 +22,7 @@ interface WeekPlanViewProps {
   isPaid?: boolean;
   /** Home size for accurate time estimates in spillover list */
   homeSize?: import('@/lib/engine/types.js').HomeSize;
-  /** True when the viewer owns this plan and can check off tasks (LTV task 1). */
+  /** True when the viewer is the authenticated owner of this plan (persists completions to DB). */
   canComplete?: boolean;
 }
 
@@ -55,42 +56,88 @@ function isToday(day: WeekPlan['days'][number]): boolean {
   );
 }
 
-export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members, isPaid = false, homeSize, canComplete = false }: WeekPlanViewProps) {
+function localStorageCompletionKey(planId: string): string {
+  return `tideeup_completions_${planId}`;
+}
+
+export function WeekPlanView({
+  plan: rawPlan,
+  planId,
+  isBlurred = false,
+  members,
+  isPaid = false,
+  homeSize,
+  canComplete = false,
+}: WeekPlanViewProps) {
   const plan: WeekPlan = 'weekOf' in rawPlan && rawPlan.weekOf instanceof Date
     ? rawPlan as WeekPlan
     : deserializeWeekPlan(rawPlan as SerializedWeekPlan);
   const weekOf = getWeekOf(plan);
   const season = plan.metadata.season;
 
-  const showCompletion = Boolean(planId && canComplete && !isBlurred);
+  // Allow interactive checkboxes on ALL revealed plans:
+  // - Authenticated owners save to DB (`/api/plan/[planId]/completions`)
+  // - Anonymous/free viewers save to `localStorage` so they get immediate utility
+  const showCompletion = Boolean(planId && !isBlurred);
   const totalTasks = plan.days.reduce((sum, d) => sum + d.tasks.length, 0);
 
-  // Per-task completion (LTV task 1): keys are `${dayIndex}:${taskId}`.
+  // Per-task completion: keys are `${dayIndex}:${taskId}`.
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [weekComplete, setWeekComplete] = useState(false);
 
   useEffect(() => {
     if (!showCompletion || !planId) return;
+
+    // 1. Load local fallback immediately for instant UI response
+    try {
+      const stored = localStorage.getItem(localStorageCompletionKey(planId));
+      if (stored) {
+        const parsed = JSON.parse(stored) as string[];
+        if (Array.isArray(parsed)) {
+          setCompletedKeys(new Set(parsed));
+        }
+      }
+    } catch {
+      // Ignore storage errors
+    }
+
+    // 2. If authenticated owner, sync from server DB
+    if (!canComplete) return;
     fetch(`/api/plan/${planId}/completions`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { completions?: { taskId: string; dayIndex: number }[] } | null) => {
         if (!data?.completions) return;
-        setCompletedKeys(new Set(data.completions.map((c) => `${c.dayIndex}:${c.taskId}`)));
+        const nextSet = new Set(data.completions.map((c) => `${c.dayIndex}:${c.taskId}`));
+        setCompletedKeys(nextSet);
+        try {
+          localStorage.setItem(localStorageCompletionKey(planId), JSON.stringify([...nextSet]));
+        } catch {
+          // Ignore
+        }
       })
       .catch(() => null);
-  }, [planId, showCompletion]);
+  }, [planId, showCompletion, canComplete]);
 
   const handleToggleTask = useCallback(
     (dayIndex: number, taskId: string, done: boolean) => {
       const key = `${dayIndex}:${taskId}`;
-      // Optimistic update.
       setCompletedKeys((prev) => {
         const next = new Set(prev);
         if (done) next.add(key);
         else next.delete(key);
+        if (planId) {
+          try {
+            localStorage.setItem(localStorageCompletionKey(planId), JSON.stringify([...next]));
+          } catch {
+            // Ignore
+          }
+        }
+        if (totalTasks > 0 && next.size >= totalTasks) {
+          setWeekComplete(true);
+        }
         return next;
       });
-      if (!planId) return;
+      if (!planId || !canComplete) return;
       fetch(`/api/plan/${planId}/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,7 +149,7 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
         })
         .catch(() => null);
     },
-    [planId],
+    [planId, canComplete, totalTasks],
   );
 
   const completedCount = completedKeys.size;
@@ -139,26 +186,28 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
     }
   }, [planId]);
 
+  const hoursPlanned = (plan.metadata.totalMinutesPlanned / 60).toFixed(1).replace(/\.0$/, '');
+
   return (
     <div className="space-y-6">
-      {/* Week header */}
+      {/* Week header — kept crisp even when the grid below is blurred on the email gate */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
+            <CalendarDays className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">
               Week of {formatWeekRange(weekOf)}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">
-              {SEASON_EMOJI[season] ?? ''} {season.charAt(0).toUpperCase() + season.slice(1)}
+              {SEASON_EMOJI[season] ?? ''} {season.charAt(0).toUpperCase() + season.slice(1)} schedule
             </Badge>
             <Badge variant="muted">
-              {plan.metadata.totalTasksScheduled} tasks
+              {plan.metadata.totalTasksScheduled} tasks tailored to your home
             </Badge>
             <Badge variant="muted">
-              ~{Math.round(plan.metadata.totalMinutesPlanned / 60)}h total
+              ~{hoursPlanned}h total across 7 days
             </Badge>
           </div>
         </div>
@@ -171,21 +220,23 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
             onClick={() => window.open(`/print/${planId}`, '_blank')}
           >
             <Printer className="w-4 h-4" />
-            Print
+            Print fridge sheet
           </Button>
         )}
       </div>
 
-      {/* Weekly progress (LTV task 1) */}
+      {/* Interactive weekly progress bar */}
       {showCompletion && (
-        <div className="rounded-xl border bg-card p-4 space-y-2">
+        <div className="rounded-xl border bg-card p-4 space-y-2.5 shadow-sm">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">
               {weekComplete
                 ? '🎉 Week complete — nice work!'
-                : `${completedCount} of ${totalTasks} tasks done`}
+                : completedCount === 0
+                  ? `Tap any task below to check it off (${totalTasks} tasks this week)`
+                  : `${completedCount} of ${totalTasks} tasks done`}
             </span>
-            <span className="text-muted-foreground">{progressPct}%</span>
+            <span className="text-muted-foreground font-medium">{progressPct}%</span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
             <div
@@ -193,11 +244,34 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
               style={{ width: `${progressPct}%` }}
             />
           </div>
+
+          {/* Contextual Pro nudge once a free user starts checking off tasks */}
+          {!isPaid && completedCount > 0 && (
+            <div className="pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted-foreground border-t border-border/60">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span>
+                  Want TideeUp to remember what you finished and rotate next Monday&apos;s plan automatically?
+                </span>
+              </span>
+              <Link
+                href="/pricing"
+                className="font-semibold text-primary hover:underline inline-flex items-center gap-1 shrink-0"
+              >
+                Unlock Pro Rotation
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
-      {/* 7-day grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* 7-day grid — blurred only before email reveal */}
+      <div
+        className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-all duration-700 ${
+          isBlurred ? 'blur-md select-none pointer-events-none' : 'blur-0'
+        }`}
+      >
         {plan.days.map((day, i) => (
           <DayCard
             key={i}
@@ -220,16 +294,24 @@ export function WeekPlanView({ plan: rawPlan, planId, isBlurred = false, members
 
       {/* Spillover */}
       {!isBlurred && plan.spillover.length > 0 && (
-        <SpilloverList tasks={plan.spillover} homeSize={homeSize} />
+        <SpilloverList tasks={plan.spillover} homeSize={homeSize} isPaid={isPaid} />
       )}
 
       {/* Locked feature gates — only for free users */}
       {!isBlurred && !isPaid && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <LockedFeature feature="rotation_memory" />
-          <LockedFeature feature="member_assignment" />
-          <LockedFeature feature="sunday_email" />
-          <LockedFeature feature="custom_tasks" />
+        <div className="space-y-3 pt-2">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <h3 className="text-base font-semibold">Put your home on autopilot with TideeUp Pro</h3>
+            <Link href="/pricing" className="text-xs font-semibold text-primary hover:underline">
+              See all Pro features →
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LockedFeature feature="rotation_memory" />
+            <LockedFeature feature="member_assignment" />
+            <LockedFeature feature="sunday_email" />
+            <LockedFeature feature="custom_tasks" />
+          </div>
         </div>
       )}
     </div>

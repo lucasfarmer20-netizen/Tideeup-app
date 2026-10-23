@@ -8,13 +8,13 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const ZONE_COLORS: Record<string, string> = {
-  kitchen:  'bg-orange-100 text-orange-700 border-orange-200',
-  bathroom: 'bg-blue-100   text-blue-700   border-blue-200',
-  bedroom:  'bg-purple-100 text-purple-700  border-purple-200',
-  living:   'bg-green-100  text-green-700   border-green-200',
-  outdoor:  'bg-lime-100   text-lime-700    border-lime-200',
-  laundry:  'bg-sky-100    text-sky-700     border-sky-200',
-  general:  'bg-slate-100  text-slate-700   border-slate-200',
+  kitchen:  'bg-[#F3E2D6] text-[#9A4F2E] border-[#E6CBB8]',
+  bathroom: 'bg-[#DEE7D7] text-[#566B43] border-[#CBD8BF]',
+  bedroom:  'bg-[#ECDFD3] text-[#8A5A3C] border-[#DDCBB9]',
+  living:   'bg-[#DCE6DD] text-[#4F6B57] border-[#C7D7C9]',
+  outdoor:  'bg-[#E5E6CE] text-[#6B6A37] border-[#D6D7B8]',
+  laundry:  'bg-[#DEE4E1] text-[#566863] border-[#CBD4D0]',
+  general:  'bg-[#EAE3D5] text-[#6F665B] border-[#DCD3C2]',
 };
 
 function getPrimaryZone(day: DayPlan): string {

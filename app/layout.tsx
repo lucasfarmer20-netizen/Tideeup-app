@@ -1,11 +1,26 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Fraunces, Poppins } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
+});
+
+// Soft serif display face — big hero / editorial moments.
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+// Friendly geometric sans — section headings & UI labels.
+const poppins = Poppins({
+  subsets: ['latin'],
+  variable: '--font-heading',
+  display: 'swap',
+  weight: ['500', '600', '700'],
 });
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tideeup.com';
@@ -19,7 +34,7 @@ export const metadata: Metadata = {
     template: '%s | TideeUp',
   },
   description:
-    'A personalized weekly cleaning plan for your home, in 2 minutes. Free. No login required.',
+    'A personalized weekly cleaning plan for your home, in 2 minutes. Free. No password required.',
   keywords: ['cleaning schedule', 'household planner', 'chore list', 'family cleaning'],
   alternates: { canonical: '/' },
   openGraph: {
@@ -39,7 +54,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0D9488',
+  themeColor: '#F4EEE1',
   width: 'device-width',
   initialScale: 1,
 };
@@ -50,7 +65,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${poppins.variable} font-sans`}>
       <body>{children}</body>
     </html>
   );

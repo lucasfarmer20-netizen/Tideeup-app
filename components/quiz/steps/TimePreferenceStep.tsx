@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Zap, Clock, Sparkles, Calendar } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import type { QuizState } from '@/hooks/useQuiz';
 interface Props {
   state: QuizState;
   set: <K extends keyof QuizState>(key: K, value: QuizState[K]) => void;
+  setAndAdvance: <K extends keyof QuizState>(key: K, value: QuizState[K]) => void;
   advance: () => void;
   back: () => void;
   canAdvance: boolean;
@@ -19,39 +21,52 @@ const OPTIONS: {
   label: string;
   tagline: string;
   detail: string;
+  badge?: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
   {
     value: 'quick',
     label: 'Quick',
     tagline: '15–20 min/day',
-    detail: 'Essentials only — dishes, basics, pet care',
+    detail: 'Essentials only — dishes, surfaces, daily basics & pet care',
     icon: Zap,
   },
   {
     value: 'steady',
     label: 'Steady',
     tagline: '30–40 min/day',
-    detail: 'Balanced — most families choose this',
+    detail: 'Balanced daily rhythm — keeps every room under control',
+    badge: 'Most popular',
     icon: Clock,
   },
   {
     value: 'thorough',
     label: 'Thorough',
     tagline: '50–60 min/day',
-    detail: 'Full coverage across every zone each week',
+    detail: 'Full coverage across every zone + weekly deep cleans',
     icon: Sparkles,
   },
   {
     value: 'batch',
     label: 'Batch cleaner',
     tagline: 'Light weekdays, big sessions on weekends',
-    detail: '~15 min Mon–Fri, ~2 hrs each weekend day',
+    detail: '~15 min Mon–Fri, ~1.5–2 hrs on weekend days',
     icon: Calendar,
   },
 ];
 
-export function TimePreferenceStep({ state, set, advance, back, canAdvance }: Props) {
+export function TimePreferenceStep({ state, setAndAdvance, advance, back, canAdvance }: Props) {
+  const [pendingPref, setPendingPref] = useState<TimePreference | null>(null);
+
+  function select(value: TimePreference) {
+    setPendingPref(value);
+    setTimeout(() => {
+      setAndAdvance('timePreference', value);
+    }, 150);
+  }
+
+  const activePref = pendingPref ?? state.timePreference;
+
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="space-y-2 text-center">
@@ -60,20 +75,22 @@ export function TimePreferenceStep({ state, set, advance, back, canAdvance }: Pr
         </div>
         <h2 className="text-2xl font-bold">How much time can you give?</h2>
         <p className="text-muted-foreground">
-          We'll fit your plan around this — not the other way around.
+          This is your weekday target — we&apos;ll fit the plan around it. Weekends
+          flex a little so bigger jobs have a home.
         </p>
       </div>
 
       <div className="space-y-3">
         {OPTIONS.map((opt) => {
-          const isSelected = state.timePreference === opt.value;
+          const isSelected = activePref === opt.value;
           const Icon = opt.icon;
           return (
             <button
               key={opt.value}
-              onClick={() => set('timePreference', opt.value)}
+              type="button"
+              onClick={() => select(opt.value)}
               className={cn(
-                'w-full flex items-center gap-4 rounded-xl border-2 px-5 py-4 text-left transition-all hover:border-primary/50 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+                'w-full flex items-center gap-4 rounded-xl border-2 px-5 py-4 text-left transition-all hover:border-primary/50 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
                 isSelected
                   ? 'border-primary bg-primary/5 shadow-sm'
                   : 'border-border bg-card',
@@ -88,16 +105,21 @@ export function TimePreferenceStep({ state, set, advance, back, canAdvance }: Pr
                 <Icon className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className={cn('font-semibold', isSelected && 'text-primary')}>
                     {opt.label}
                   </p>
                   <span className="text-xs text-muted-foreground">{opt.tagline}</span>
+                  {opt.badge && (
+                    <span className="text-[11px] font-semibold bg-sage/25 text-foreground px-2 py-0.5 rounded-pill">
+                      {opt.badge}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-0.5">{opt.detail}</p>
               </div>
               {isSelected && (
-                <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
               )}
             </button>
           );
@@ -109,7 +131,7 @@ export function TimePreferenceStep({ state, set, advance, back, canAdvance }: Pr
           ← Back
         </Button>
         <Button onClick={advance} disabled={!canAdvance} className="flex-[2]">
-          Next →
+          Review my profile →
         </Button>
       </div>
     </div>

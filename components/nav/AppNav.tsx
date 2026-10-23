@@ -66,11 +66,11 @@ export function AppNav() {
   );
 
   return (
-    <nav className="border-b bg-white sticky top-0 z-20">
+    <nav className="border-b bg-surface sticky top-0 z-20">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Left: logo + desktop links */}
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-xl font-bold text-primary">
+          <Link href="/dashboard" className="text-2xl font-display font-semibold text-primary">
             TideeUp
           </Link>
           <div className="hidden sm:flex items-center gap-5">{navLinks}</div>
@@ -99,7 +99,7 @@ export function AppNav() {
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg py-1 min-w-44 z-30">
+              <div className="absolute right-0 top-full mt-1 bg-surface border rounded-lg shadow-lg py-1 min-w-44 z-30">
                 <Link
                   href="/pricing"
                   className="block px-4 py-2 text-sm hover:bg-muted"
@@ -130,7 +130,7 @@ export function AppNav() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="sm:hidden border-t px-4 py-4 space-y-4 bg-white">
+        <div className="sm:hidden border-t px-4 py-4 space-y-4 bg-surface">
           <div className="flex flex-col gap-3">{navLinks}</div>
           <div className="border-t pt-4 flex items-center justify-between">
             <div className="flex items-center gap-2">

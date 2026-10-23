@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { useQuiz } from '@/hooks/useQuiz';
 import { ProgressBar } from './ProgressBar';
 import { HomeSizeStep } from './steps/HomeSizeStep';
@@ -12,16 +13,21 @@ import { ReviewStep } from './steps/ReviewStep';
 const TOTAL_STEPS = 5;
 
 function QuizContent() {
-  const { state, set, advance, back, canAdvance } = useQuiz();
-  const stepProps = { state, set, advance, back, canAdvance };
+  const { state, set, setAndAdvance, advance, back, goToStep, canAdvance } = useQuiz();
+  const stepProps = { state, set, setAndAdvance, advance, back, goToStep, canAdvance };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-border/60 bg-surface/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl font-bold text-primary">TideeUp</span>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <Link href="/" className="text-2xl font-display font-semibold text-primary">
+              TideeUp
+            </Link>
+            <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-pill">
+              Takes ~60 sec
+            </span>
           </div>
           <ProgressBar currentStep={state.step} totalSteps={TOTAL_STEPS} />
         </div>

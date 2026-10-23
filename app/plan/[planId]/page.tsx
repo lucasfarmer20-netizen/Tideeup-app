@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WeekPlanView } from '@/components/plan/WeekPlanView';
 import { createAdminClient } from '@/lib/supabase/server.js';
@@ -26,6 +27,7 @@ export default async function PlanPage({ params }: PageProps) {
   let members: string[] = [];
   let isPaid = false;
   let canComplete = false;
+  let isSignedIn = false;
 
   try {
     const supabase = createAdminClient();
@@ -42,6 +44,7 @@ export default async function PlanPage({ params }: PageProps) {
 
     // Load members and tier for authenticated users
     if (authUser?.email) {
+      isSignedIn = true;
       const { data: userRow } = await supabase
         .from('users')
         .select('id, tier')
@@ -49,7 +52,7 @@ export default async function PlanPage({ params }: PageProps) {
         .maybeSingle();
 
       if (userRow) {
-        // The viewer can check off tasks only if they own this plan.
+        // The viewer can persist completions to DB if they own this plan.
         canComplete = (data as { user_id?: string | null }).user_id === (userRow as { id: string }).id;
         isPaid = (userRow as { tier?: string }).tier === 'paid';
         if (isPaid) {
@@ -62,7 +65,7 @@ export default async function PlanPage({ params }: PageProps) {
         }
       }
     }
-  } catch (err) {
+  } catch {
     // In development without Supabase configured, show a friendly message
     if (process.env.NODE_ENV === 'development') {
       return (
@@ -85,10 +88,18 @@ export default async function PlanPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-white sticky top-0 z-10 no-print">
+      <header className="border-b border-border/60 bg-surface/80 backdrop-blur-md sticky top-0 z-10 no-print">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-primary">TideeUp</Link>
+          <Link href="/" className="text-2xl font-display font-semibold text-primary">TideeUp</Link>
           <div className="flex items-center gap-2">
+            {!isPaid && (
+              <Button asChild size="sm">
+                <Link href="/pricing">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Upgrade to Pro
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline" size="sm">
               <Link href="/quiz">New plan</Link>
             </Button>
@@ -96,16 +107,18 @@ export default async function PlanPage({ params }: PageProps) {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 pt-6 no-print">
-        <Link
-          href="/dashboard"
-          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-        >
-          ← Back to dashboard
-        </Link>
-      </div>
+      {isSignedIn && (
+        <div className="max-w-5xl mx-auto px-4 pt-6 no-print">
+          <Link
+            href="/dashboard"
+            className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+          >
+            ← Back to dashboard
+          </Link>
+        </div>
+      )}
 
-      <main className="max-w-5xl mx-auto px-4 pt-4 pb-8">
+      <main className="max-w-5xl mx-auto px-4 pt-6 pb-10">
         <WeekPlanView plan={plan} planId={planId} members={members} isPaid={isPaid} canComplete={canComplete} />
       </main>
     </div>
