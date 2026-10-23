@@ -115,6 +115,10 @@ export function YourWeek({
             <p className="text-sm text-ink-muted">
               Tell us how much time each day really has. We&apos;ll fit the plan to it.
             </p>
+            <p className="text-xs text-ink-muted">
+              Each bar is 3 hours in 15-minute blocks &mdash; tap or drag across it to set a day, or use
+              the shortcuts underneath. Leaving a day empty makes it a rest day.
+            </p>
           </div>
 
           <CoverageReadout summary={summary} />
@@ -174,9 +178,9 @@ export function YourWeek({
 
       {/* 5. Locked state overlay (locked = true) */}
       {locked && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface/65 backdrop-blur-[2px] p-4">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface backdrop-blur-[2px] p-4">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6 text-center shadow-md space-y-4">
-            <div className="mx-auto inline-flex items-center justify-center w-10 h-10 rounded-full bg-surface-sage/70 text-ink">
+            <div className="mx-auto inline-flex items-center justify-center w-10 h-10 rounded-full bg-surface-sage text-ink">
               <Lock className="w-4 h-4" />
             </div>
             <p className="text-sm font-medium text-ink leading-relaxed">

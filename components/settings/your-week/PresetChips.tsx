@@ -33,10 +33,10 @@ export function PresetChips({
             aria-pressed={isSelected}
             onClick={() => onSelect(preset.minutes)}
             className={cn(
-              'rounded-pill px-2.5 py-1 text-xs font-medium leading-none transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 min-h-[28px]',
+              'rounded-pill px-2.5 py-1 text-xs font-medium leading-none border transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 min-h-[28px]',
               isSelected
-                ? 'bg-sage text-white shadow-sm'
-                : 'bg-surface-sage/60 text-ink hover:bg-surface-sage',
+                ? 'bg-sage border-sage text-white shadow-sm'
+                : 'bg-surface border-sage-mist text-ink hover:bg-sage-mist',
               disabled && 'pointer-events-none opacity-60',
             )}
           >

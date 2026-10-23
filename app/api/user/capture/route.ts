@@ -131,7 +131,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // 5. Upsert household config so the Sunday cron can find it.
     const { data: planRow } = await supabase
       .from('plans')
-      .select('home_size, household_count, pets, kids, time_preference')
+      .select('home_size, home_type, household_count, pets, pet_types, kids, flooring_types, time_preference')
       .eq('id', planId)
       .single();
 
@@ -140,9 +140,12 @@ export async function POST(request: Request): Promise<NextResponse> {
         {
           user_id: userId,
           home_size: planRow.home_size,
+          home_type: planRow.home_type ?? null,
           household_count: planRow.household_count,
           pets: planRow.pets,
+          pet_types: planRow.pet_types ?? [],
           kids: planRow.kids,
+          flooring_types: planRow.flooring_types ?? [],
           time_preference: planRow.time_preference,
         },
         { onConflict: 'user_id' },

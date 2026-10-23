@@ -35,7 +35,7 @@ export function CoverageReadout({ summary }: CoverageReadoutProps) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="Weekly cleaning coverage"
-        className="h-2 w-full rounded-pill bg-sage-mist/60 overflow-hidden"
+        className="h-2 w-full rounded-pill bg-sage-mist overflow-hidden"
       >
         <div
           className="h-full rounded-pill bg-sage transition-all duration-200 motion-reduce:transition-none"

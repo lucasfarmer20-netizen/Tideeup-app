@@ -193,6 +193,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           home_size: homeSize,
           home_type: homeType,
           household_count: householdCount,
+          pets: petTypes.length > 0,
           pet_types: petTypes,
           kids,
           flooring_types: flooringTypes,
