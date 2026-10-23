@@ -14,6 +14,13 @@ ALTER TABLE households
   ADD COLUMN IF NOT EXISTS pet_types      text[] NOT NULL DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS flooring_types text[] NOT NULL DEFAULT '{}';
 
+-- time_preference's check only allowed the legacy numeric labels; the engine
+-- has written quick/steady/thorough/batch since phase 2, so every household
+-- upsert from the quiz was also being rejected. Accept both vocabularies.
+ALTER TABLE households DROP CONSTRAINT IF EXISTS households_time_preference_check;
+ALTER TABLE households ADD CONSTRAINT households_time_preference_check
+  CHECK (time_preference IN ('quick', 'steady', 'thorough', 'batch', '10', '20', '30', 'BATCH'));
+
 -- Backfill: create or refresh a household row from the latest claimed plan.
 WITH latest AS (
   SELECT DISTINCT ON (user_id)
