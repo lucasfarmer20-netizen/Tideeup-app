@@ -175,7 +175,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Get household config
       const { data: household } = await supabase
         .from('households')
-        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state, members')
+        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state, members, no_go_days, day_budgets')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -217,6 +217,12 @@ export async function GET(request: Request): Promise<NextResponse> {
         timePreference,
         weekOf,
         rotationState: (household.rotation_state as RotationState) ?? undefined,
+        ...(Array.isArray(household.no_go_days) && (household.no_go_days as number[]).length > 0
+          ? { noGoDays: household.no_go_days as number[] }
+          : {}),
+        ...(Array.isArray(household.day_budgets) && (household.day_budgets as number[]).length === 7
+          ? { dayBudgets: household.day_budgets as number[] }
+          : {}),
       };
 
       const weekPlan = generateWeekPlan(plannerInput);
