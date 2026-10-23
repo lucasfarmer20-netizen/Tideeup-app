@@ -8,16 +8,18 @@ import type { DayPlan, ScoredTask, TimePreference } from './types.js';
 //   thorough → 50-60 min/day   (full coverage)
 //   batch    → minimal weekdays, ~2 big weekend sessions
 //
-// Weekends are given modest extra headroom (people have more flexibility),
-// but NOT the 3× inflation of the old model that caused the plan-bloat bug.
+// Weekends get only MODEST extra headroom (~1.3–1.4× the weekday) so monthly
+// deep-cleans have somewhere to land without blowing past the per-day promise
+// the user picked. Exception: batch mode is explicitly "light weekdays, big
+// weekend sessions", so its weekends are intentionally large.
 //
 // dayOfWeek: 0=Sun, 1–5=Mon–Fri, 6=Sat
 
 const BUDGETS: Record<TimePreference, Record<'weekday' | 'saturday' | 'sunday', number>> = {
-  quick:    { weekday: 20,  saturday: 35,  sunday: 28  },
-  steady:   { weekday: 35,  saturday: 65,  sunday: 50  },
-  thorough: { weekday: 55,  saturday: 105, sunday: 80  },
-  batch:    { weekday: 15,  saturday: 130, sunday: 105 },
+  quick:    { weekday: 20,  saturday: 30,  sunday: 26 },
+  steady:   { weekday: 35,  saturday: 48,  sunday: 42 },
+  thorough: { weekday: 55,  saturday: 78,  sunday: 68 },
+  batch:    { weekday: 15,  saturday: 120, sunday: 95 },
 };
 
 function dayKey(dayOfWeek: number): 'weekday' | 'saturday' | 'sunday' {

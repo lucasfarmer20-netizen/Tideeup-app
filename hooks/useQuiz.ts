@@ -30,8 +30,10 @@ export interface QuizState {
 export interface UseQuizReturn {
   state: QuizState;
   set: <K extends keyof QuizState>(key: K, value: QuizState[K]) => void;
+  setAndAdvance: <K extends keyof QuizState>(key: K, value: QuizState[K]) => void;
   advance: () => void;
   back: () => void;
+  goToStep: (targetStep: number) => void;
   canAdvance: boolean;
 }
 
@@ -140,6 +142,20 @@ export function useQuiz(): UseQuizReturn {
     [router, buildUrl],
   );
 
+  const setAndAdvance = useCallback(
+    <K extends keyof QuizState>(key: K, value: QuizState[K]) => {
+      const nextStep = state.step < TOTAL_STEPS ? state.step + 1 : state.step;
+      router.push(
+        buildUrl({
+          [key]: String(value),
+          step: String(nextStep),
+        }),
+        { scroll: false },
+      );
+    },
+    [router, buildUrl, state.step],
+  );
+
   const advance = useCallback(() => {
     if (state.step < TOTAL_STEPS) {
       router.push(buildUrl({ step: String(state.step + 1) }), { scroll: false });
@@ -152,11 +168,22 @@ export function useQuiz(): UseQuizReturn {
     }
   }, [router, buildUrl, state.step]);
 
+  const goToStep = useCallback(
+    (targetStep: number) => {
+      if (targetStep >= 1 && targetStep <= TOTAL_STEPS) {
+        router.push(buildUrl({ step: String(targetStep) }), { scroll: false });
+      }
+    },
+    [router, buildUrl],
+  );
+
   return {
     state,
     set,
+    setAndAdvance,
     advance,
     back,
+    goToStep,
     canAdvance: canAdvanceFrom(state),
   };
 }

@@ -2,38 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * TideeUp brand system — "Reset with Wren" world.
+ * Source of truth: the CSS custom properties below. Don't hardcode hex in
+ * components — reference the semantic tokens (background, card, primary,
+ * secondary, accent, muted, border) which Tailwind maps in tailwind.config.ts.
+ *
+ * Mapping note: the codebase uses `primary` as its emphasis / CTA / link color,
+ * so shadcn `primary` is wired to the brand TERRACOTTA (white text passes AA).
+ * The brand SAGE is the calm fill — surfaced via `secondary`, `surface-sage`
+ * panels, and section bands. Brand-named aliases (--sage, --terracotta, …) are
+ * also exposed for intentional use.
+ */
+
 @layer base {
   :root {
-    /* TideeUp teal brand: #0D9488 ≈ hsl(174 84% 32%) */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    /* ── Brand palette (raw values) ─────────────────────────────────── */
+    --oat: #F4EEE1;            /* page background */
+    --cream: #FCF9F2;          /* card / surface */
+    --sage: #93A97C;           /* primary brand color */
+    --sage-light: #C2D0B4;     /* section panels, subtle fills */
+    --sage-mist: #C7D3C9;      /* soft tertiary accents */
+    --terracotta: #C56B47;     /* accent — links, highlights, icons */
+    --terracotta-deep: #A8512F;/* accessible CTA fills (white text passes AA) */
+    --chestnut: #8A5A3C;       /* secondary brand — linework, borders */
+    --ink: #33302A;            /* body text (warm near-black) */
+    --ink-muted: #6F665B;      /* secondary text, captions */
+    --line: #DCD3C2;           /* hairlines, borders, dividers */
+    --warm-fill: #ECE5D6;      /* muted surface (between oat and border) */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* ── Semantic tokens (consumed by Tailwind) ─────────────────────── */
+    --background: var(--oat);
+    --foreground: var(--ink);
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --surface: var(--cream);
+    --surface-sage: var(--sage-light);
 
-    --primary: 174 84% 32%;
-    --primary-foreground: 0 0% 100%;
+    --card: var(--cream);
+    --card-foreground: var(--ink);
 
-    --secondary: 174 40% 94%;
-    --secondary-foreground: 174 60% 22%;
+    --popover: var(--cream);
+    --popover-foreground: var(--ink);
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* emphasis / CTA / links — terracotta (white text passes AA) */
+    --primary: var(--terracotta-deep);
+    --primary-foreground: #FFFFFF;
 
-    --accent: 174 40% 94%;
-    --accent-foreground: 174 60% 22%;
+    /* calm sage fill — secondary buttons, panels, badges */
+    --secondary: var(--sage-light);
+    --secondary-foreground: var(--ink);
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    /* brand accent */
+    --accent: var(--terracotta);
+    --accent-strong: var(--terracotta-deep);
+    --accent-foreground: #FFFFFF;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 174 84% 32%;
+    --muted: var(--warm-fill);
+    --muted-foreground: var(--ink-muted);
 
-    --radius: 0.75rem;
+    --destructive: #B23B2E;
+    --destructive-foreground: #FFFFFF;
+
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--terracotta);
+
+    /* ── Shape ───────────────────────────────────────────────────────── */
+    --radius: 1.25rem;         /* cards — matches the rounded app mockup */
+    --radius-md: 0.875rem;     /* buttons */
+    --radius-sm: 0.5rem;
+    --radius-pill: 999px;
+
+    /* ── Elevation — soft and low, never harsh ──────────────────────── */
+    --shadow-sm: 0 1px 2px rgba(51, 48, 42, 0.06);
+    --shadow-md: 0 6px 16px rgba(51, 48, 42, 0.08);
+    --shadow-lg: 0 16px 40px rgba(51, 48, 42, 0.10);
+  }
+
+  /* Warm dark mode — deep chestnut, not cold slate. */
+  .dark {
+    --oat: #2A2620;
+    --cream: #34302A;
+    --sage: #A8BC90;
+    --sage-light: #3E4636;
+    --sage-mist: #3E4636;
+    --terracotta: #D98260;
+    --terracotta-deep: #D98260;
+    --chestnut: #C08A63;
+    --ink: #F1EADD;
+    --ink-muted: #B6AC9C;
+    --line: #4A443B;
+    --warm-fill: #3A352E;
+
+    --primary: var(--terracotta-deep);
+    --primary-foreground: #23201B;
+    --accent-foreground: #23201B;
+    --secondary-foreground: var(--ink);
+    --ring: var(--terracotta);
   }
 }
 
@@ -45,8 +110,12 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  h1, h2, h3, h4 {
-    @apply tracking-tight;
+  /* Fraunces for the big hero/display moment (h1); Poppins for section heads. */
+  h1 {
+    @apply font-display tracking-tight;
+  }
+  h2, h3, h4 {
+    @apply font-heading tracking-tight;
   }
 }
 

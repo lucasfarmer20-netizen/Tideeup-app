@@ -31,13 +31,13 @@ function getTopZones(weekPlan: SerializedWeekPlan): string[] {
 }
 
 const ZONE_COLORS: Record<string, string> = {
-  kitchen:  'bg-orange-100 text-orange-700',
-  bathroom: 'bg-blue-100 text-blue-700',
-  bedroom:  'bg-purple-100 text-purple-700',
-  living:   'bg-green-100 text-green-700',
-  outdoor:  'bg-lime-100 text-lime-700',
-  laundry:  'bg-sky-100 text-sky-700',
-  general:  'bg-slate-100 text-slate-700',
+  kitchen:  'bg-[#F3E2D6] text-[#9A4F2E]',
+  bathroom: 'bg-[#DEE7D7] text-[#566B43]',
+  bedroom:  'bg-[#ECDFD3] text-[#8A5A3C]',
+  living:   'bg-[#DCE6DD] text-[#4F6B57]',
+  outdoor:  'bg-[#E5E6CE] text-[#6B6A37]',
+  laundry:  'bg-[#DEE4E1] text-[#566863]',
+  general:  'bg-[#EAE3D5] text-[#6F665B]',
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────

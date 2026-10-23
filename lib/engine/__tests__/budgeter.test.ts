@@ -46,17 +46,21 @@ describe('getDayBudget', () => {
   it('weekday steady preference = 35 min', () => {
     expect(getDayBudget(1, 'steady')).toBe(35); // Monday
   });
-  it('Saturday steady preference = 65 min', () => {
-    expect(getDayBudget(6, 'steady')).toBe(65);
+  it('Saturday steady preference = 48 min', () => {
+    expect(getDayBudget(6, 'steady')).toBe(48);
   });
-  it('Sunday steady preference = 50 min', () => {
-    expect(getDayBudget(0, 'steady')).toBe(50);
+  it('Sunday steady preference = 42 min', () => {
+    expect(getDayBudget(0, 'steady')).toBe(42);
+  });
+  it('steady weekend stays close to the stated daily range (no 2× blowout)', () => {
+    // Weekend headroom must stay modest — under 1.5× the weekday budget.
+    expect(getDayBudget(6, 'steady')).toBeLessThanOrEqual(getDayBudget(1, 'steady') * 1.5);
   });
   it('batch weekday = 15 min', () => {
     expect(getDayBudget(3, 'batch')).toBe(15);
   });
-  it('batch Saturday = 130 min', () => {
-    expect(getDayBudget(6, 'batch')).toBe(130);
+  it('batch Saturday = 120 min', () => {
+    expect(getDayBudget(6, 'batch')).toBe(120);
   });
   it('quick weekday = 20 min', () => {
     expect(getDayBudget(2, 'quick')).toBe(20);
@@ -116,7 +120,7 @@ describe('initDayPlans', () => {
     const monday   = days.find((d) => d.dayOfWeek === 1)!;
     const saturday = days.find((d) => d.dayOfWeek === 6)!;
     expect(monday.budget).toBe(55);
-    expect(saturday.budget).toBe(105);
+    expect(saturday.budget).toBe(78);
   });
 
   it('assigns correct budgets for quick preference', () => {

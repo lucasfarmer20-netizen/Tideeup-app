@@ -90,22 +90,27 @@ export async function finalizeWeek(
     .eq('user_id', userId)
     .maybeSingle();
 
-  const lastWeek = (existingStreak as { last_completed_week?: string | null } | null)
-    ?.last_completed_week
-    ? new Date((existingStreak as { last_completed_week: string }).last_completed_week)
-    : null;
+  const prevWeekIso =
+    (existingStreak as { last_completed_week?: string | null } | null)?.last_completed_week ?? null;
+  const prevStreak = (existingStreak as { current_streak?: number } | null)?.current_streak ?? 0;
+  const lastCompletedWeek = weekOf.toISOString().slice(0, 10);
 
-  const daysSinceLast = lastWeek ? daysBetween(lastWeek, weekOf) : Infinity;
-  // Increment streak if last completion was within 8 days; otherwise reset to 1.
-  const newCurrentStreak =
-    daysSinceLast <= 8
-      ? ((existingStreak as { current_streak?: number } | null)?.current_streak ?? 0) + 1
-      : 1;
+  // Streaks count DISTINCT consecutive weeks, not plans. Completing a second
+  // plan in a week that's already been counted must not bump the streak.
+  let newCurrentStreak: number;
+  if (prevWeekIso === lastCompletedWeek) {
+    // This week is already counted — keep the streak as-is.
+    newCurrentStreak = Math.max(prevStreak, 1);
+  } else {
+    const daysSinceLast = prevWeekIso ? daysBetween(new Date(prevWeekIso), weekOf) : Infinity;
+    // A genuinely new week within ~9 days of the last extends the streak;
+    // a longer gap resets it to 1.
+    newCurrentStreak = daysSinceLast <= 9 ? prevStreak + 1 : 1;
+  }
   const newLongestStreak = Math.max(
     newCurrentStreak,
     (existingStreak as { longest_streak?: number } | null)?.longest_streak ?? 0,
   );
-  const lastCompletedWeek = weekOf.toISOString().slice(0, 10);
 
   await supabase.from('streaks').upsert(
     {

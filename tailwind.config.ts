@@ -15,47 +15,78 @@ const config: Config = {
     },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        border: 'var(--border)',
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        surface: {
+          DEFAULT: 'var(--surface)',
+          sage: 'var(--surface-sage)',
+        },
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: 'var(--accent)',
+          strong: 'var(--accent-strong)',
+          foreground: 'var(--accent-foreground)',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
         },
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
+        },
+        /* Brand-named aliases for intentional use */
+        sage: {
+          DEFAULT: 'var(--sage)',
+          light: 'var(--sage-light)',
+          mist: 'var(--sage-mist)',
+        },
+        terracotta: {
+          DEFAULT: 'var(--terracotta)',
+          deep: 'var(--terracotta-deep)',
+        },
+        chestnut: 'var(--chestnut)',
+        ink: {
+          DEFAULT: 'var(--ink)',
+          muted: 'var(--ink-muted)',
         },
       },
       borderRadius: {
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        xl: 'var(--radius)',
+        '2xl': 'var(--radius)',
+        md: 'var(--radius-md)',
+        sm: 'var(--radius-sm)',
+        pill: 'var(--radius-pill)',
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        heading: ['var(--font-heading)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        DEFAULT: 'var(--shadow-md)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
       keyframes: {
         'fade-in': {
@@ -66,10 +97,15 @@ const config: Config = {
           from: { filter: 'blur(8px)' },
           to: { filter: 'blur(0)' },
         },
+        'scale-in': {
+          from: { opacity: '0', transform: 'scale(0.97)' },
+          to: { opacity: '1', transform: 'scale(1)' },
+        },
       },
       animation: {
-        'fade-in': 'fade-in 0.4s ease-out',
+        'fade-in': 'fade-in 0.5s ease-out both',
         'blur-out': 'blur-out 0.6s ease-out',
+        'scale-in': 'scale-in 0.3s ease-out both',
       },
     },
   },

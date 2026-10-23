@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { QuizState } from '@/hooks/useQuiz';
 import type { GeneratePlanRequest, GeneratePlanResponse } from '@/types/api';
@@ -11,6 +11,7 @@ import type { PetType } from '@/lib/engine/types.js';
 interface Props {
   state: QuizState;
   back: () => void;
+  goToStep: (step: number) => void;
   canAdvance: boolean;
 }
 
@@ -52,16 +53,31 @@ const TIME_LABELS: Record<string, string> = {
   batch:    '📅 Batch cleaner — weekday light, big weekends',
 };
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({
+  label,
+  value,
+  onEdit,
+}: {
+  label: string;
+  value: string;
+  onEdit: () => void;
+}) {
   return (
-    <div className="flex items-start justify-between gap-4 py-3 border-b last:border-0">
+    <button
+      type="button"
+      onClick={onEdit}
+      className="w-full flex items-center justify-between gap-4 py-3 px-2 -mx-2 rounded-lg border-b last:border-0 text-left hover:bg-muted/60 transition-colors group"
+    >
       <span className="text-sm text-muted-foreground shrink-0">{label}</span>
-      <span className="text-sm font-medium text-right">{value}</span>
-    </div>
+      <span className="flex items-center gap-2 text-sm font-medium text-right">
+        <span>{value}</span>
+        <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-50 group-hover:opacity-100 group-hover:text-primary shrink-0 transition-opacity" />
+      </span>
+    </button>
   );
 }
 
-export function ReviewStep({ state, back, canAdvance }: Props) {
+export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,28 +148,49 @@ export function ReviewStep({ state, back, canAdvance }: Props) {
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
           <Sparkles className="w-6 h-6 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold">Looks great — ready?</h2>
+        <h2 className="text-2xl font-bold">Your home profile is ready</h2>
         <p className="text-muted-foreground">
-          Here's what we'll use to build your plan.
+          Tap any row to edit, or generate your custom 7-day plan below.
         </p>
       </div>
 
       <div className="rounded-xl border bg-card p-5">
         {state.homeSize && (
-          <SummaryRow label="Home size" value={HOME_SIZE_LABELS[state.homeSize]} />
+          <SummaryRow
+            label="Home size"
+            value={HOME_SIZE_LABELS[state.homeSize]}
+            onEdit={() => goToStep(1)}
+          />
         )}
         {state.homeType && (
-          <SummaryRow label="Home type" value={HOME_TYPE_LABELS[state.homeType]} />
+          <SummaryRow
+            label="Home type"
+            value={HOME_TYPE_LABELS[state.homeType]}
+            onEdit={() => goToStep(2)}
+          />
         )}
         {flooringSummary && (
-          <SummaryRow label="Flooring" value={flooringSummary} />
+          <SummaryRow
+            label="Flooring"
+            value={flooringSummary}
+            onEdit={() => goToStep(2)}
+          />
         )}
-        <SummaryRow label="Household" value={householdParts} />
-        <SummaryRow label="Pets" value={petSummary} />
+        <SummaryRow
+          label="Household"
+          value={householdParts}
+          onEdit={() => goToStep(3)}
+        />
+        <SummaryRow
+          label="Pets"
+          value={petSummary}
+          onEdit={() => goToStep(3)}
+        />
         {state.timePreference && (
           <SummaryRow
             label="Time per day"
             value={TIME_LABELS[state.timePreference] ?? state.timePreference}
+            onEdit={() => goToStep(4)}
           />
         )}
       </div>
@@ -164,21 +201,26 @@ export function ReviewStep({ state, back, canAdvance }: Props) {
         </p>
       )}
 
-      <Button
-        onClick={handleGenerate}
-        disabled={!canAdvance || isLoading}
-        size="xl"
-        className="w-full"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="animate-spin" />
-            Building your plan…
-          </>
-        ) : (
-          'Generate my plan →'
-        )}
-      </Button>
+      <div className="space-y-3">
+        <Button
+          onClick={handleGenerate}
+          disabled={!canAdvance || isLoading}
+          size="xl"
+          className="w-full shadow-lg shadow-primary/20"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="animate-spin" />
+              Building your 7-day schedule…
+            </>
+          ) : (
+            'Generate my free plan →'
+          )}
+        </Button>
+        <p className="text-xs text-center text-muted-foreground">
+          Zone-anchored · Fatigue-balanced · Ready in ~2 seconds
+        </p>
+      </div>
 
       <Button variant="ghost" onClick={back} disabled={isLoading} className="w-full">
         ← Back
