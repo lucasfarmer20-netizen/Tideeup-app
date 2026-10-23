@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, CheckCircle, Clock, Sparkles, Home, Star } from 'lucide-react';
+import { ArrowRight, CheckCircle, Clock, Sparkles, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SampleWeekPreview } from '@/components/landing/SampleWeekPreview';
@@ -73,14 +73,8 @@ function Hero() {
 
           {/* Trust row */}
           <div className="flex flex-col sm:flex-row items-center lg:items-start gap-2 sm:gap-4 pt-2">
-            <div className="flex items-center gap-1 text-accent">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Star key={i} className="w-4 h-4 fill-current" />
-              ))}
-            </div>
             <p className="text-sm text-muted-foreground">
-              Loved by <span className="font-semibold text-foreground">2,000+</span> busy families ·
-              Takes 60 seconds · Printable &amp; mobile-ready
+              Takes 60 seconds · Printable &amp; mobile-ready · No account needed
             </p>
           </div>
         </div>
@@ -150,6 +144,8 @@ function HowItWorks() {
 
 // ─── Social proof ──────────────────────────────────────────────────────────────
 
+// TODO(launch): placeholder quotes — replace with real customer quotes (with
+// permission) or remove this section before promoting the site.
 const TESTIMONIALS = [
   {
     quote: "We haven't missed a bathroom in 3 weeks. That's a personal record.",
@@ -176,22 +172,11 @@ function SocialProof() {
       <div className="max-w-4xl mx-auto px-4 py-24 space-y-10">
         <div className="text-center space-y-3">
           <h2 className="text-3xl font-semibold">What families are saying</h2>
-          <div className="flex items-center justify-center gap-1 text-accent">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Star key={i} className="w-4 h-4 fill-current" />
-            ))}
-            <span className="ml-2 text-sm text-muted-foreground">4.9 average · 2,000+ families</span>
-          </div>
         </div>
         <div className="grid sm:grid-cols-3 gap-6">
           {TESTIMONIALS.map((t, i) => (
             <div key={i} className="bg-surface rounded-2xl border p-6 space-y-4 shadow-sm flex flex-col justify-between">
               <div className="space-y-3">
-                <div className="flex items-center gap-1 text-accent">
-                  {[0, 1, 2, 3, 4].map((s) => (
-                    <Star key={s} className="w-3.5 h-3.5 fill-current" />
-                  ))}
-                </div>
                 <p className="text-sm leading-relaxed text-foreground/85">
                   &ldquo;{t.quote}&rdquo;
                 </p>
@@ -319,7 +304,7 @@ function FooterCta() {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
         <h2 className="text-3xl sm:text-4xl font-semibold">Ready for a calmer, cleaner home?</h2>
         <p className="text-ink/80 text-lg">
-          Join 2,000+ families who stopped guessing what to clean and started following a plan that fits.
+          Stop guessing what to clean. Get a plan that fits your home, your people, and the time you actually have.
         </p>
         <Button asChild size="xl" className="shadow-lg">
           <Link href="/quiz">

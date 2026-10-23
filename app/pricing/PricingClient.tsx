@@ -15,7 +15,7 @@ interface ApiError {
 const FAQ_ITEMS = [
   {
     q: 'How does Rotation Memory work?',
-    a: "On the free plan, each week starts from scratch. With Pro, TideeUp tracks every task you complete and automatically rotates biweekly, monthly, and spillover tasks into your next Monday schedule so nothing gets neglected or repeated too soon.",
+    a: "On the free plan, each week starts from scratch. With Pro, TideeUp tracks every task you complete and automatically rotates weekly, monthly, and spillover tasks into your next Monday schedule so nothing gets neglected or repeated too soon.",
   },
   {
     q: 'Do I pay extra for my partner or kids?',
