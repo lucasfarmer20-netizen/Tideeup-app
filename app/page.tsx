@@ -142,64 +142,6 @@ function HowItWorks() {
   );
 }
 
-// ─── Social proof ──────────────────────────────────────────────────────────────
-
-// TODO(launch): placeholder quotes — replace with real customer quotes (with
-// permission) or remove this section before promoting the site.
-const TESTIMONIALS = [
-  {
-    quote: "We haven't missed a bathroom in 3 weeks. That's a personal record.",
-    name: 'Sarah M.',
-    role: 'Mom of two, suburban Boston',
-  },
-  {
-    quote: "I set it to 'Batch cleaner' and it's perfect. 15 minutes on weekdays and I barely have to think about it.",
-    name: 'James T.',
-    role: 'Single dad, 4-bedroom house',
-  },
-  {
-    quote: 'The zone anchoring thing is genius. Kitchen Monday, Bathrooms Wednesday just makes sense.',
-    name: 'Priya K.',
-    role: 'Family of 5, 3 cats',
-  },
-];
-
-const AVATAR_TINTS = ['bg-[#C56B47]', 'bg-[#93A97C]', 'bg-[#8A5A3C]'];
-
-function SocialProof() {
-  return (
-    <section className="bg-surface-sage/30 border-y">
-      <div className="max-w-4xl mx-auto px-4 py-24 space-y-10">
-        <div className="text-center space-y-3">
-          <h2 className="text-3xl font-semibold">What families are saying</h2>
-        </div>
-        <div className="grid sm:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <div key={i} className="bg-surface rounded-2xl border p-6 space-y-4 shadow-sm flex flex-col justify-between">
-              <div className="space-y-3">
-                <p className="text-sm leading-relaxed text-foreground/85">
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-2">
-                <div
-                  className={`w-9 h-9 rounded-full ${AVATAR_TINTS[i % AVATAR_TINTS.length]} text-white flex items-center justify-center text-sm font-semibold shrink-0`}
-                >
-                  {t.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 // ─── Pricing teaser ───────────────────────────────────────────────────────────
 
 const FREE_FEATURES = [
@@ -357,7 +299,6 @@ export default function LandingPage() {
       <main>
         <Hero />
         <HowItWorks />
-        <SocialProof />
         <PricingTeaser />
         <FooterCta />
       </main>
