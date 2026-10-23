@@ -13,7 +13,7 @@ import { getSeasonWeight } from './seasons.js';
 
 // ─── Frequency base weights ───────────────────────────────────────────────────
 // Daily tasks must always win allocation; monthly tasks compete at the bottom.
-const FREQUENCY_WEIGHT: Record<Task['frequency'], number> = {
+export const FREQUENCY_WEIGHT: Record<Task['frequency'], number> = {
   daily:   100,
   weekly:   10,
   monthly:   1,

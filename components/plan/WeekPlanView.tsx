@@ -286,6 +286,12 @@ export function WeekPlanView({
         ))}
       </div>
 
+      {/* Coverage — how much of what the home needs fits in the time given.
+          Older saved plans predate the pressure report, so guard for it. */}
+      {!isBlurred && plan.metadata.pressure && plan.metadata.pressure.ratio > 1.15 && (
+        <CoverageNote pressure={plan.metadata.pressure} />
+      )}
+
       {/* Spillover */}
       {!isBlurred && plan.spillover.length > 0 && (
         <SpilloverList tasks={plan.spillover} homeSize={homeSize} isPaid={isPaid} />
@@ -308,6 +314,33 @@ export function WeekPlanView({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Coverage note ────────────────────────────────────────────────────────────
+
+function CoverageNote({ pressure }: { pressure: NonNullable<WeekPlan['metadata']['pressure']> }) {
+  const pct = Math.round(pressure.coverage * 100);
+  const needHours = Math.round(pressure.demandMinutes / 60);
+  const haveHours = Math.round((pressure.supplyMinutes / 60) * 10) / 10;
+  const trimmedDaily = pressure.trimmed.filter((t) => t.to > 0);
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 no-print">
+      <p className="font-medium">
+        This plan covers about {pct}% of what your home needs each week.
+      </p>
+      <p className="mt-1 text-amber-800/90">
+        Your home adds up to roughly {needHours} hours a week; you&rsquo;ve set aside about {haveHours}.
+        We kept the essentials every day
+        {trimmedDaily.length > 0 && (
+          <>
+            , scaled back {trimmedDaily.length === 1 ? 'one habit' : `${trimmedDaily.length} habits`} to a few days a week
+          </>
+        )}
+        , and pushed the rest to later weeks &mdash; they&rsquo;ll rotate back in.
+      </p>
     </div>
   );
 }

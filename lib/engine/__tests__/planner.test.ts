@@ -76,14 +76,26 @@ describe('generateWeekPlan — daily stabilisers', () => {
     expect(daysWithDailyTasks).toBe(7);
   });
 
-  it('daily stabilisers do not exceed 85% of each day budget', () => {
+  it('protected stabilisers (dishes, pickup) are never trimmed', () => {
+    const plan = generateWeekPlan({ ...BASE_INPUT, timePreference: 'quick' });
+    const trimmedIds = plan.metadata.pressure.trimmed.map((t) => t.taskId);
+    expect(trimmedIds).not.toContain('dishes');
+    expect(trimmedIds).not.toContain('tidy-common-areas');
+  });
+
+  it('degradable stabilisers keep at least their cadence floor', () => {
+    // make-beds is 7/2: under heavy pressure it must still appear on ≥2 days
+    const plan = generateWeekPlan({ ...BASE_INPUT, timePreference: 'quick', homeSize: 'S' });
+    const bedDays = plan.days.filter((d) => d.tasks.some((t) => t.task.id === 'make-beds')).length;
+    expect(bedDays).toBeGreaterThanOrEqual(2);
+  });
+
+  it('weekdays carry weekly tasks at steady — not stabilisers only', () => {
     const plan = generateWeekPlan(BASE_INPUT);
-    for (const day of plan.days) {
-      const stabilizerMinutes = day.tasks
-        .filter((t) => t.task.frequency === 'daily')
-        .reduce((sum, t) => sum + t.estimatedMinutes, 0);
-      expect(stabilizerMinutes).toBeLessThanOrEqual(Math.ceil(day.budget * 0.85));
-    }
+    const weekdaysWithWeekly = plan.days
+      .filter((d) => d.dayOfWeek >= 1 && d.dayOfWeek <= 5)
+      .filter((d) => d.tasks.some((t) => t.task.frequency !== 'daily')).length;
+    expect(weekdaysWithWeekly).toBeGreaterThanOrEqual(3);
   });
 
   it('does not include cat tasks when petTypes is empty', () => {
@@ -186,7 +198,8 @@ describe('generateWeekPlan — monthly task placement', () => {
     const plan = generateWeekPlan({ ...BASE_INPUT, timePreference: 'thorough' });
     const monthlyPlaced   = plan.days.some((d) => d.tasks.some((t) => t.task.frequency === 'monthly'));
     const monthlySpillover = plan.spillover.some((t) => t.frequency === 'monthly');
-    expect(monthlyPlaced || monthlySpillover).toBe(true);
+    const monthlyTrimmed = plan.metadata.pressure.trimmed.some((t) => t.taskId.startsWith('deep-') || t.taskId.startsWith('clean-'));
+    expect(monthlyPlaced || monthlySpillover || monthlyTrimmed).toBe(true);
   });
 
   it('prefers weekend days for monthly tasks', () => {
@@ -200,7 +213,8 @@ describe('generateWeekPlan — monthly task placement', () => {
     // (not guaranteed if weekend is already full, but expected in practice)
     const monthlyExistsAnywhere =
       plan.days.some((d) => d.tasks.some((t) => t.task.frequency === 'monthly')) ||
-      plan.spillover.length > 0;
+      plan.spillover.length > 0 ||
+      plan.metadata.pressure.trimmed.length > 0;
     expect(monthlyExistsAnywhere).toBe(true);
     // If any monthly was placed, at least one should be on a weekend
     if (plan.days.some((d) => d.tasks.some((t) => t.task.frequency === 'monthly'))) {
@@ -258,7 +272,8 @@ describe('generateWeekPlan — rotation state', () => {
       d.tasks.some((t) => t.task.id === 'laundry-wash-dry'),
     );
     const hasLaundrySpillover = plan.spillover.some((t) => t.id === 'laundry-wash-dry');
-    expect(hasLaundryPlaced || hasLaundrySpillover).toBe(true);
+    const hasLaundryTrimmed = plan.metadata.pressure.trimmed.some((t) => t.taskId === 'laundry-wash-dry');
+    expect(hasLaundryPlaced || hasLaundrySpillover || hasLaundryTrimmed).toBe(true);
   });
 });
 

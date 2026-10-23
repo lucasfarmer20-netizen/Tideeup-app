@@ -11,6 +11,31 @@ export type Zone =
 
 export type Frequency = 'daily' | 'weekly' | 'monthly';
 
+/**
+ * How often a task should happen, expressed per week.
+ *
+ * `target` is the ideal number of occurrences in a week; `min` is the floor the
+ * engine may degrade to when the household's time supply can't cover demand.
+ * Daily tasks are typically 7/7 (never trimmed) or 7/3 (fine at three days a
+ * week when pressed). Weekly tasks are 1/0: ideally this week, but allowed to
+ * slip a week. Monthly tasks are 0.25/0: due roughly every fourth week.
+ */
+export interface Cadence {
+  target: number;
+  min: number;
+}
+
+/**
+ * A free-tier household's priorities, picked on the quiz. Each one marks a set
+ * of tasks as protected from degradation (see lib/engine/cadence.ts).
+ */
+export type Priority =
+  | 'kitchen-reset'
+  | 'bathrooms'
+  | 'floors'
+  | 'clutter'
+  | 'pet-mess';
+
 export type HomeSize = 'S' | 'M' | 'L' | 'XL';
 
 /** User-facing time commitment per day */
@@ -42,7 +67,17 @@ export interface Task {
   id: string;
   title: string;
   zone: Zone;
+  /**
+   * Coarse frequency class. Still used by the UI to split "stabilisers" from
+   * featured tasks, and by rotation memory. The engine schedules on `cadence`.
+   */
   frequency: Frequency;
+  /**
+   * Per-week cadence. Optional: when omitted it is derived from `frequency`
+   * (daily → 7/7, weekly → 1/0, monthly → 0.25/0). Set it explicitly on daily
+   * tasks that are fine at fewer than seven days a week.
+   */
+  cadence?: Cadence;
   /**
    * Active work time in minutes, explicitly specified per home size.
    * Replaces the old baseMinutes + home-size multiplier approach.
@@ -115,6 +150,31 @@ export interface DayPlan {
   fatigue: number;
 }
 
+/** One task whose cadence was reduced because demand exceeded supply. */
+export interface TrimmedTask {
+  taskId: string;
+  title: string;
+  /** Occurrences this week before and after trimming */
+  from: number;
+  to: number;
+}
+
+/**
+ * How the household's weekly time supply compared with what the home needs.
+ * `ratio` > 1 means the plan had to be trimmed; `coverage` is the share of
+ * ideal demand that made it onto the plan (0–1).
+ */
+export interface PressureReport {
+  supplyMinutes: number;
+  /** Minutes the full-cadence plan would have needed */
+  demandMinutes: number;
+  /** demandMinutes / supplyMinutes (Infinity when supply is 0) */
+  ratio: number;
+  /** Minutes actually planned / demandMinutes */
+  coverage: number;
+  trimmed: TrimmedTask[];
+}
+
 export interface WeekPlan {
   weekOf: Date;
   days: DayPlan[];
@@ -124,6 +184,7 @@ export interface WeekPlan {
     totalTasksScheduled: number;
     totalMinutesPlanned: number;
     season: Season;
+    pressure: PressureReport;
   };
 }
 
@@ -172,4 +233,15 @@ export interface PlannerInput {
   noGoDays?: number[];
   /** Paid tier: custom tasks merged into the base library before scoring */
   customTasks?: Task[];
+  /**
+   * Per-day minute budgets, Monday first (index 0 = Mon … 6 = Sun).
+   * When provided this overrides the `timePreference` budget table entirely —
+   * it is how the Pro "Your week" sliders reach the engine. A 0 means no-go.
+   */
+  dayBudgets?: number[];
+  /**
+   * Household priorities from the quiz. Tasks matching a priority are protected
+   * from degradation (kept at their target cadence) when time is short.
+   */
+  priorities?: Priority[];
 }
