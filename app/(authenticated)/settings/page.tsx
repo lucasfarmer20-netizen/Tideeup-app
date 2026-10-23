@@ -5,18 +5,23 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client.js';
 import { Lock, Plus, X, Trash2 } from 'lucide-react';
+import { YourWeekSection } from '@/components/settings/your-week/YourWeekSection';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface Household {
   home_size: string;
+  home_type?: string | null;
   household_count: number;
   pets: boolean;
+  pet_types?: string[] | null;
   kids: boolean;
   time_preference: string;
+  flooring_types?: string[] | null;
   members: string[];
   no_go_days: number[];
   season_override: string | null;
+  day_budgets?: number[] | null;
 }
 
 interface CustomTask {
@@ -632,6 +637,12 @@ export default function SettingsPage() {
           onChange={setCustomTasks}
         />
       </Section>
+
+      <YourWeekSection
+        household={household}
+        isPaid={isPaid}
+        onSaved={(dayBudgets) => setHousehold((h) => (h ? { ...h, day_budgets: dayBudgets } : h))}
+      />
 
       <Section title="No-go days">
         <NoGoDaysSection

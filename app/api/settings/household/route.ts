@@ -22,6 +22,8 @@ const schema = z.object({
   members:        z.array(z.string().min(1).max(50)).max(10).optional(),
   noGoDays:       z.array(z.number().int().min(0).max(6)).optional(),
   seasonOverride: z.enum(['spring', 'summer', 'fall', 'winter']).nullable().optional(),
+  // Pro "Your week": 7 minute budgets, Monday first, 0–180. null clears them.
+  dayBudgets:     z.array(z.number().int().min(0).max(180)).length(7).nullable().optional(),
 });
 
 async function getAuthUserId(): Promise<string | null> {
@@ -62,11 +64,12 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     return NextResponse.json({ message: 'Invalid input', errors: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { homeSize, householdCount, pets, kids, timePreference, members, noGoDays, seasonOverride } = parsed.data;
+  const { homeSize, householdCount, pets, kids, timePreference, members, noGoDays, seasonOverride, dayBudgets } = parsed.data;
   const supabase = createAdminClient();
 
   // Gate paid-only fields behind tier check
-  const paidFieldsPresent = members !== undefined || noGoDays !== undefined || 'seasonOverride' in parsed.data;
+  const paidFieldsPresent =
+    members !== undefined || noGoDays !== undefined || 'seasonOverride' in parsed.data || 'dayBudgets' in parsed.data;
   if (paidFieldsPresent) {
     const { data: userRow } = await supabase.from('users').select('tier').eq('id', userId).maybeSingle();
     if ((userRow as { tier?: string } | null)?.tier !== 'paid') {
@@ -84,6 +87,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   if (members !== undefined) patch.members = members;
   if (noGoDays !== undefined) patch.no_go_days = noGoDays;
   if ('seasonOverride' in parsed.data) patch.season_override = seasonOverride ?? null;
+  if ('dayBudgets' in parsed.data) patch.day_budgets = dayBudgets ?? null;
 
   // Upsert household (partial — existing columns not in patch stay unchanged via ON CONFLICT DO UPDATE)
   // Supabase upsert replaces all columns, so we need to merge with existing data first
@@ -106,7 +110,8 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
   // Only regenerate plan when core profile fields were changed
   const coreFieldChanged = homeSize !== undefined || householdCount !== undefined ||
-    pets !== undefined || kids !== undefined || timePreference !== undefined;
+    pets !== undefined || kids !== undefined || timePreference !== undefined ||
+    'dayBudgets' in parsed.data;
 
   let newPlanId: string | null = null;
   if (coreFieldChanged) try {
@@ -122,7 +127,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
     const [planRes, hRes, userRes] = await Promise.all([
       supabase.from('plans').select('id, completed_at').eq('user_id', userId).eq('week_of', currentMondayISO).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('households').select('rotation_state, season_override, no_go_days, home_size, home_type, household_count, pet_types, pets, kids, time_preference, flooring_types').eq('user_id', userId).maybeSingle(),
+      supabase.from('households').select('rotation_state, season_override, no_go_days, day_budgets, home_size, home_type, household_count, pet_types, pets, kids, time_preference, flooring_types').eq('user_id', userId).maybeSingle(),
       supabase.from('users').select('tier').eq('id', userId).maybeSingle(),
     ]);
 
@@ -156,6 +161,9 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       : undefined;
     const effectiveSeasonOverride = (household?.season_override ?? seasonOverride ?? null) as Season | null;
     const effectiveNoGoDays = household?.no_go_days as number[] | undefined;
+    // Prefer the value just sent (it is in `merged`), else what is stored.
+    const storedDayBudgets = (merged.day_budgets ?? household?.day_budgets) as number[] | null | undefined;
+    const effectiveDayBudgets = Array.isArray(storedDayBudgets) && storedDayBudgets.length === 7 ? storedDayBudgets : undefined;
 
     const newPlan = generateWeekPlan({
       homeSize: effectiveHomeSize,
@@ -169,6 +177,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       ...(effectiveRotationState ? { rotationState: effectiveRotationState } : {}),
       ...(effectiveSeasonOverride ? { seasonOverride: effectiveSeasonOverride } : {}),
       ...(effectiveNoGoDays?.length ? { noGoDays: effectiveNoGoDays } : {}),
+      ...(effectiveDayBudgets ? { dayBudgets: effectiveDayBudgets } : {}),
     });
     const serialized = serializeWeekPlan(newPlan);
 

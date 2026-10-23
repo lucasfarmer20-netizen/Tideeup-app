@@ -43,7 +43,7 @@ export async function GET(): Promise<NextResponse> {
   const [hRes, ctRes] = await Promise.all([
     supabase
       .from('households')
-      .select('home_size, household_count, pets, kids, time_preference, members, no_go_days, season_override')
+      .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, members, no_go_days, season_override, day_budgets')
       .eq('user_id', userId)
       .maybeSingle(),
     supabase.from('custom_tasks').select('id, title, zone, frequency, estimated_minutes').eq('user_id', userId),

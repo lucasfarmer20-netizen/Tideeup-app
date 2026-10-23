@@ -50,6 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   let rotationState: RotationState | undefined;
   let seasonOverride: Season | undefined;
   let noGoDays: number[] | undefined;
+  let dayBudgets: number[] | undefined;
   let customTasks: Task[] | undefined;
 
   const authUser = await getServerUser();
@@ -82,7 +83,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const [hRes, ctRes] = await Promise.all([
           supabase
             .from('households')
-            .select('rotation_state, season_override, no_go_days')
+            .select('rotation_state, season_override, no_go_days, day_budgets')
             .eq('user_id', authenticatedUserId)
             .maybeSingle(),
           isPaidUser
@@ -100,6 +101,10 @@ export async function POST(request: Request): Promise<NextResponse> {
           }
           if (household.no_go_days && (household.no_go_days as number[]).length > 0) {
             noGoDays = household.no_go_days as number[];
+          }
+          // Pro "Your week" sliders override the time_preference budget table.
+          if (isPaidUser && Array.isArray(household.day_budgets) && (household.day_budgets as number[]).length === 7) {
+            dayBudgets = household.day_budgets as number[];
           }
         }
 
@@ -141,6 +146,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     ...(rotationState !== undefined ? { rotationState } : {}),
     ...(seasonOverride !== undefined ? { seasonOverride } : {}),
     ...(noGoDays !== undefined ? { noGoDays } : {}),
+    ...(dayBudgets !== undefined ? { dayBudgets } : {}),
     ...(customTasks !== undefined ? { customTasks } : {}),
   };
 
