@@ -74,7 +74,7 @@ export async function GET(request: Request): Promise<NextResponse> {
             // Ensure a household config row exists so the dashboard + cron can find it.
             const { data: planRow } = await adminClient
               .from('plans')
-              .select('home_size, household_count, pets, kids, time_preference')
+              .select('home_size, home_type, household_count, pets, pet_types, kids, flooring_types, time_preference')
               .eq('id', pendingPlanId)
               .maybeSingle();
 
@@ -83,9 +83,12 @@ export async function GET(request: Request): Promise<NextResponse> {
                 {
                   user_id: userRow.id,
                   home_size: planRow.home_size,
+                  home_type: planRow.home_type ?? null,
                   household_count: planRow.household_count,
                   pets: planRow.pets,
+                  pet_types: planRow.pet_types ?? [],
                   kids: planRow.kids,
+                  flooring_types: planRow.flooring_types ?? [],
                   time_preference: planRow.time_preference,
                 },
                 { onConflict: 'user_id' },

@@ -84,7 +84,7 @@ function VerifyContent() {
         <p className="text-sm text-muted-foreground">
           {loading
             ? 'Verifying your code, redirecting shortly…'
-            : <>We sent an 8-digit code to <strong>{email}</strong></>
+            : <>We sent a sign-in code to <strong>{email}</strong></>
           }
         </p>
       </div>

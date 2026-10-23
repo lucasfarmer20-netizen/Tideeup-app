@@ -31,7 +31,7 @@ export function DayRow({
     <div
       className={cn(
         'rounded-xl px-3 py-2.5 transition-colors motion-reduce:transition-none space-y-2',
-        day.isWeekend ? 'bg-surface-sage/25' : 'bg-transparent',
+        day.isWeekend ? 'bg-surface-sage' : 'bg-transparent',
       )}
     >
       {/* Main row: Day label + 12-segment bar + tabular readout (+ inline presets on xl desktop) */}

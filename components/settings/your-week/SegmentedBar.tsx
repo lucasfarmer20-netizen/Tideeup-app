@@ -130,10 +130,12 @@ export function SegmentedBar({
           <div
             key={idx}
             className={cn(
-              'relative h-6 flex-1 rounded-[4px] overflow-hidden transition-colors duration-100 motion-reduce:transition-none',
+              // Brand tokens are plain hex vars, so no `/alpha` modifiers here:
+              // Tailwind drops those classes and the segment renders transparent.
+              'relative h-7 flex-1 rounded-[4px] overflow-hidden border transition-colors duration-100 motion-reduce:transition-none',
               isFilled
-                ? 'bg-sage'
-                : 'bg-sage-mist/65 group-hover:bg-sage-mist',
+                ? 'bg-sage border-sage'
+                : 'bg-surface border-sage-mist group-hover:bg-sage-mist',
             )}
           >
             {/* Thin terracotta accent cap on the last filled segment */}
