@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Home } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
+import { ChoiceRow } from '../ChoiceRow';
 import type { HomeSize } from '@/lib/engine/types.js';
 import type { QuizState } from '@/hooks/useQuiz';
 
@@ -22,14 +23,12 @@ const OPTIONS: { value: HomeSize; label: string; rooms: string; emoji: string }[
   { value: 'XL', label: 'Extra large', rooms: '6+ bedrooms or estate', emoji: '🏰' },
 ];
 
-export function HomeSizeStep({ state, setAndAdvance, advance, canAdvance }: Props) {
+export function HomeSizeStep({ state, set, advance, canAdvance }: Props) {
   const [pendingSize, setPendingSize] = useState<HomeSize | null>(null);
 
   function select(value: HomeSize) {
     setPendingSize(value);
-    setTimeout(() => {
-      setAndAdvance('homeSize', value);
-    }, 150);
+    set('homeSize', value);
   }
 
   const activeSize = pendingSize ?? state.homeSize;
@@ -75,6 +74,29 @@ export function HomeSizeStep({ state, setAndAdvance, advance, canAdvance }: Prop
           );
         })}
       </div>
+
+      <ChoiceRow
+        label="How many bathrooms?"
+        hint="Bathrooms are the biggest driver of weekly time."
+        choices={[
+          { value: 1, label: '1' },
+          { value: 2, label: '2' },
+          { value: 3, label: '3' },
+          { value: 4, label: '4+' },
+        ]}
+        value={state.bathrooms}
+        onSelect={(v) => set('bathrooms', v)}
+      />
+
+      <ChoiceRow
+        label="How many floors?"
+        choices={[
+          { value: 1, label: 'One level' },
+          { value: 2, label: 'Two or more' },
+        ]}
+        value={state.floors}
+        onSelect={(v) => set('floors', v === 2 ? 2 : 1)}
+      />
 
       {state.homeSize && (
         <Button

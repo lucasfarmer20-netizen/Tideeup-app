@@ -8,9 +8,10 @@ import { HomeSizeStep } from './steps/HomeSizeStep';
 import { HomeDetailsStep } from './steps/HomeDetailsStep';
 import { HouseholdStep } from './steps/HouseholdStep';
 import { TimePreferenceStep } from './steps/TimePreferenceStep';
+import { PrioritiesStep } from './steps/PrioritiesStep';
 import { ReviewStep } from './steps/ReviewStep';
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 function QuizContent() {
   const { state, set, setAndAdvance, advance, back, goToStep, canAdvance } = useQuiz();
@@ -39,7 +40,8 @@ function QuizContent() {
         {state.step === 2 && <HomeDetailsStep {...stepProps} />}
         {state.step === 3 && <HouseholdStep {...stepProps} />}
         {state.step === 4 && <TimePreferenceStep {...stepProps} />}
-        {state.step === 5 && <ReviewStep {...stepProps} />}
+        {state.step === 5 && <PrioritiesStep {...stepProps} />}
+        {state.step === 6 && <ReviewStep {...stepProps} />}
       </main>
     </div>
   );

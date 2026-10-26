@@ -4,7 +4,9 @@
  * to keep the contract in one place.
  */
 
-import type { FlooringType, HomeSize, HomeType, PetType, TimePreference } from '@/lib/engine/types.js';
+import type {
+  HouseholdProfile,
+  Priority, FlooringType, HomeSize, HomeType, PetType, TimePreference } from '@/lib/engine/types.js';
 import type { SerializedWeekPlan } from '@/utils/serialize';
 
 // ─── POST /api/plan/generate ──────────────────────────────────────────────────
@@ -12,12 +14,18 @@ import type { SerializedWeekPlan } from '@/utils/serialize';
 export interface GeneratePlanRequest {
   homeSize: HomeSize;
   homeType: HomeType;
-  /** 1–6 (6 means "6 or more") */
+  /** 1–6 (6 means "6 or more"). Derived from profile when profile is sent. */
   householdCount: number;
   petTypes: PetType[];
+  /** Derived from profile.kidAges when profile is sent. */
   kids: boolean;
   flooringTypes: FlooringType[];
+  /** Derived from profile.weeklyHours when profile is sent. */
   timePreference: TimePreference;
+  /** Quiz v2 — richer household profile (optional for older clients). */
+  profile?: HouseholdProfile;
+  /** Quiz v2 — "what matters most" picks (optional). */
+  priorities?: Priority[];
 }
 
 export interface GeneratePlanResponse {

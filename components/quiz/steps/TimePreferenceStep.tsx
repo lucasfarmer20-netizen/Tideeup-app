@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Zap, Clock, Sparkles, Calendar } from 'lucide-react';
+import { Clock, Zap, Scale, Sparkles, Flame } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Button } from '@/components/ui/button';
-import type { TimePreference } from '@/lib/engine/types.js';
+import { ChoiceRow } from '../ChoiceRow';
 import type { QuizState } from '@/hooks/useQuiz';
 
 interface Props {
@@ -16,57 +15,24 @@ interface Props {
   canAdvance: boolean;
 }
 
-const OPTIONS: {
-  value: TimePreference;
+// Hours per week. The engine turns this into per-day budgets using the
+// distribution below (see lib/engine/profile.ts). Values must match
+// WEEKLY_HOURS_OPTIONS in hooks/useQuiz.ts.
+const HOURS_OPTIONS: {
+  value: number;
   label: string;
   tagline: string;
   detail: string;
-  badge?: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
 }[] = [
-  {
-    value: 'quick',
-    label: 'Quick',
-    tagline: '15–20 min/day',
-    detail: 'Essentials only — dishes, surfaces, daily basics & pet care',
-    icon: Zap,
-  },
-  {
-    value: 'steady',
-    label: 'Steady',
-    tagline: '30–40 min/day',
-    detail: 'Balanced daily rhythm — keeps every room under control',
-    badge: 'Most popular',
-    icon: Clock,
-  },
-  {
-    value: 'thorough',
-    label: 'Thorough',
-    tagline: '50–60 min/day',
-    detail: 'Full coverage across every zone + weekly deep cleans',
-    icon: Sparkles,
-  },
-  {
-    value: 'batch',
-    label: 'Batch cleaner',
-    tagline: 'Light weekdays, big sessions on weekends',
-    detail: '~15 min Mon–Fri, ~1.5–2 hrs on weekend days',
-    icon: Calendar,
-  },
+  { value: 2,   label: 'About 2 hours',  tagline: '~15 min a day',   detail: 'The essentials, kept up',            icon: Zap },
+  { value: 3.5, label: '3–4 hours',      tagline: '~30 min a day',   detail: 'Balanced — most families land here', icon: Scale, badge: 'Most common' },
+  { value: 6,   label: '5–7 hours',      tagline: '~50 min a day',   detail: 'Full coverage of every zone',       icon: Sparkles },
+  { value: 9,   label: '8+ hours',       tagline: '~75 min a day',   detail: 'Big home, high standards, or both',  icon: Flame },
 ];
 
-export function TimePreferenceStep({ state, setAndAdvance, advance, back, canAdvance }: Props) {
-  const [pendingPref, setPendingPref] = useState<TimePreference | null>(null);
-
-  function select(value: TimePreference) {
-    setPendingPref(value);
-    setTimeout(() => {
-      setAndAdvance('timePreference', value);
-    }, 150);
-  }
-
-  const activePref = pendingPref ?? state.timePreference;
-
+export function TimePreferenceStep({ state, set, advance, back, canAdvance }: Props) {
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="space-y-2 text-center">
@@ -75,25 +41,22 @@ export function TimePreferenceStep({ state, setAndAdvance, advance, back, canAdv
         </div>
         <h2 className="text-2xl font-bold">How much time can you give?</h2>
         <p className="text-muted-foreground">
-          This is your weekday target — we&apos;ll fit the plan around it. Weekends
-          flex a little so bigger jobs have a home.
+          Be honest — a plan that fits the time you really have beats one you abandon.
         </p>
       </div>
 
       <div className="space-y-3">
-        {OPTIONS.map((opt) => {
-          const isSelected = activePref === opt.value;
+        {HOURS_OPTIONS.map((opt) => {
+          const isSelected = state.weeklyHours === opt.value;
           const Icon = opt.icon;
           return (
             <button
               key={opt.value}
               type="button"
-              onClick={() => select(opt.value)}
+              onClick={() => set('weeklyHours', opt.value)}
               className={cn(
                 'w-full flex items-center gap-4 rounded-xl border-2 px-5 py-4 text-left transition-all hover:border-primary/50 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-                isSelected
-                  ? 'border-primary bg-primary/5 shadow-sm'
-                  : 'border-border bg-card',
+                isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card',
               )}
             >
               <div
@@ -106,9 +69,7 @@ export function TimePreferenceStep({ state, setAndAdvance, advance, back, canAdv
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className={cn('font-semibold', isSelected && 'text-primary')}>
-                    {opt.label}
-                  </p>
+                  <p className={cn('font-semibold', isSelected && 'text-primary')}>{opt.label}</p>
                   <span className="text-xs text-muted-foreground">{opt.tagline}</span>
                   {opt.badge && (
                     <span className="text-[11px] font-semibold bg-sage/25 text-foreground px-2 py-0.5 rounded-pill">
@@ -118,20 +79,28 @@ export function TimePreferenceStep({ state, setAndAdvance, advance, back, canAdv
                 </div>
                 <p className="text-sm text-muted-foreground mt-0.5">{opt.detail}</p>
               </div>
-              {isSelected && (
-                <span className="w-2.5 h-2.5 rounded-full bg-primary shrink-0" />
-              )}
             </button>
           );
         })}
       </div>
 
+      <ChoiceRow
+        label="When does that time happen?"
+        choices={[
+          { value: 'spread',   label: 'A bit every day' },
+          { value: 'weekends', label: 'Mostly weekends' },
+          { value: 'weekdays', label: 'Mostly weekdays' },
+        ]}
+        value={state.distribution}
+        onSelect={(v) => set('distribution', v)}
+      />
+
       <div className="flex gap-3">
-        <Button variant="outline" onClick={back} className="flex-1">
+        <Button onClick={back} variant="outline" size="lg" className="flex-1">
           ← Back
         </Button>
-        <Button onClick={advance} disabled={!canAdvance} className="flex-[2]">
-          Review my profile →
+        <Button onClick={advance} disabled={!canAdvance} size="lg" className="flex-1">
+          Next →
         </Button>
       </div>
     </div>

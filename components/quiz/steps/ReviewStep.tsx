@@ -46,13 +46,6 @@ const PET_LABELS: Record<PetType, string> = {
   'other':            'Other pets',
 };
 
-const TIME_LABELS: Record<string, string> = {
-  quick:    '⚡ Quick — 15–20 min/day',
-  steady:   '🕐 Steady — 30–40 min/day',
-  thorough: '✨ Thorough — 50–60 min/day',
-  batch:    '📅 Batch cleaner — weekday light, big weekends',
-};
-
 function SummaryRow({
   label,
   value,
@@ -96,6 +89,15 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
         kids:           state.kids,
         flooringTypes:  state.flooringTypes,
         timePreference: state.timePreference,
+        profile: {
+          adults:       state.adults,
+          kidAges:      state.kidAges,
+          bathrooms:    state.bathrooms,
+          floors:       state.floors,
+          ...(state.weeklyHours !== null ? { weeklyHours: state.weeklyHours } : {}),
+          distribution: state.distribution,
+        },
+        priorities: state.priorities,
       };
 
       const res = await fetch('/api/plan/generate', {
@@ -129,10 +131,35 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
   }
 
   // Build readable household summary
+  const kidParts = [
+    state.kidAges.under5 ? `${state.kidAges.under5} under 5` : null,
+    state.kidAges.age5to12 ? `${state.kidAges.age5to12} age 5–12` : null,
+    state.kidAges.teen ? `${state.kidAges.teen} teen${state.kidAges.teen > 1 ? 's' : ''}` : null,
+  ].filter(Boolean);
   const householdParts = [
-    `${state.householdCount === 6 ? '6+' : state.householdCount} ${state.householdCount === 1 ? 'person' : 'people'}`,
-    state.kids ? 'kids' : null,
-  ].filter(Boolean).join(', ');
+    `${state.adults} ${state.adults === 1 ? 'adult' : 'adults'}`,
+    ...(kidParts.length ? [`kids: ${kidParts.join(', ')}`] : []),
+  ].join(' · ');
+
+  const homeDetail = [
+    state.homeSize ? HOME_SIZE_LABELS[state.homeSize] : null,
+    `${state.bathrooms === 4 ? '4+' : state.bathrooms} bath`,
+    state.floors === 2 ? '2+ floors' : '1 floor',
+  ].filter(Boolean).join(' · ');
+
+  const DISTRIBUTION_LABELS: Record<string, string> = {
+    spread: 'a bit every day', weekends: 'mostly weekends', weekdays: 'mostly weekdays',
+  };
+  const timeSummary = state.weeklyHours !== null
+    ? `${state.weeklyHours === 3.5 ? '3–4' : state.weeklyHours === 6 ? '5–7' : state.weeklyHours === 9 ? '8+' : state.weeklyHours} hrs/week, ${DISTRIBUTION_LABELS[state.distribution]}`
+    : '';
+
+  const PRIORITY_LABELS: Record<string, string> = {
+    'kitchen-reset': 'Kitchen reset', bathrooms: 'Bathrooms', floors: 'Floors', clutter: 'Clutter', 'pet-mess': 'Pet mess',
+  };
+  const prioritySummary = state.priorities.length
+    ? state.priorities.map((p) => PRIORITY_LABELS[p] ?? p).join(', ')
+    : 'None picked';
 
   const petSummary = state.petTypes.length === 0
     ? 'No pets'
@@ -157,8 +184,8 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
       <div className="rounded-xl border bg-card p-5">
         {state.homeSize && (
           <SummaryRow
-            label="Home size"
-            value={HOME_SIZE_LABELS[state.homeSize]}
+            label="Home"
+            value={homeDetail}
             onEdit={() => goToStep(1)}
           />
         )}
@@ -186,13 +213,18 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
           value={petSummary}
           onEdit={() => goToStep(3)}
         />
-        {state.timePreference && (
+        {timeSummary && (
           <SummaryRow
-            label="Time per day"
-            value={TIME_LABELS[state.timePreference] ?? state.timePreference}
+            label="Time"
+            value={timeSummary}
             onEdit={() => goToStep(4)}
           />
         )}
+        <SummaryRow
+          label="Priorities"
+          value={prioritySummary}
+          onEdit={() => goToStep(5)}
+        />
       </div>
 
       {error && (

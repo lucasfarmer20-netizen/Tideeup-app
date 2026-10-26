@@ -5,6 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import { generateWeekPlan } from '@/lib/engine/planner.js';
+import { profileSchema, prioritiesSchema, toHouseholdProfile } from '@/lib/validation/profile';
 import { serializeWeekPlan } from '@/utils/serialize';
 import type { RotationState, Season, HomeType, PetType, FlooringType, TimePreference } from '@/lib/engine/types.js';
 
@@ -24,6 +25,8 @@ const schema = z.object({
   seasonOverride: z.enum(['spring', 'summer', 'fall', 'winter']).nullable().optional(),
   // Pro "Your week": 7 minute budgets, Monday first, 0–180. null clears them.
   dayBudgets:     z.array(z.number().int().min(0).max(180)).length(7).nullable().optional(),
+  profile:        profileSchema.optional(),
+  priorities:     prioritiesSchema.optional(),
 });
 
 async function getAuthUserId(): Promise<string | null> {
@@ -64,7 +67,8 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     return NextResponse.json({ message: 'Invalid input', errors: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { homeSize, householdCount, pets, kids, timePreference, members, noGoDays, seasonOverride, dayBudgets } = parsed.data;
+  const { homeSize, householdCount, pets, kids, timePreference, members, noGoDays, seasonOverride, dayBudgets, priorities } = parsed.data;
+  const profile = parsed.data.profile ? toHouseholdProfile(parsed.data.profile) : undefined;
   const supabase = createAdminClient();
 
   // Gate paid-only fields behind tier check
@@ -88,6 +92,8 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   if (noGoDays !== undefined) patch.no_go_days = noGoDays;
   if ('seasonOverride' in parsed.data) patch.season_override = seasonOverride ?? null;
   if ('dayBudgets' in parsed.data) patch.day_budgets = dayBudgets ?? null;
+  if (profile !== undefined) patch.profile = profile;
+  if (priorities !== undefined) patch.priorities = priorities;
 
   // Upsert household (partial — existing columns not in patch stay unchanged via ON CONFLICT DO UPDATE)
   // Supabase upsert replaces all columns, so we need to merge with existing data first
@@ -111,7 +117,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   // Only regenerate plan when core profile fields were changed
   const coreFieldChanged = homeSize !== undefined || householdCount !== undefined ||
     pets !== undefined || kids !== undefined || timePreference !== undefined ||
-    'dayBudgets' in parsed.data;
+    'dayBudgets' in parsed.data || profile !== undefined || priorities !== undefined;
 
   let newPlanId: string | null = null;
   if (coreFieldChanged) try {
@@ -127,7 +133,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
     const [planRes, hRes, userRes] = await Promise.all([
       supabase.from('plans').select('id, completed_at').eq('user_id', userId).eq('week_of', currentMondayISO).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('households').select('rotation_state, season_override, no_go_days, day_budgets, home_size, home_type, household_count, pet_types, pets, kids, time_preference, flooring_types').eq('user_id', userId).maybeSingle(),
+      supabase.from('households').select('rotation_state, season_override, no_go_days, day_budgets, home_size, home_type, household_count, pet_types, pets, kids, time_preference, flooring_types, profile, priorities').eq('user_id', userId).maybeSingle(),
       supabase.from('users').select('tier').eq('id', userId).maybeSingle(),
     ]);
 
@@ -164,6 +170,12 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     // Prefer the value just sent (it is in `merged`), else what is stored.
     const storedDayBudgets = (merged.day_budgets ?? household?.day_budgets) as number[] | null | undefined;
     const effectiveDayBudgets = Array.isArray(storedDayBudgets) && storedDayBudgets.length === 7 ? storedDayBudgets : undefined;
+    const rawProfile = merged.profile ?? household?.profile;
+    const parsedProfile = rawProfile ? profileSchema.safeParse(rawProfile) : null;
+    const effectiveProfile = parsedProfile?.success ? toHouseholdProfile(parsedProfile.data) : undefined;
+    const rawPriorities = merged.priorities ?? household?.priorities;
+    const parsedPriorities = Array.isArray(rawPriorities) ? prioritiesSchema.safeParse(rawPriorities) : null;
+    const effectivePriorities = parsedPriorities?.success && parsedPriorities.data.length > 0 ? parsedPriorities.data : undefined;
 
     const newPlan = generateWeekPlan({
       homeSize: effectiveHomeSize,
@@ -178,6 +190,8 @@ export async function PATCH(request: Request): Promise<NextResponse> {
       ...(effectiveSeasonOverride ? { seasonOverride: effectiveSeasonOverride } : {}),
       ...(effectiveNoGoDays?.length ? { noGoDays: effectiveNoGoDays } : {}),
       ...(effectiveDayBudgets ? { dayBudgets: effectiveDayBudgets } : {}),
+      ...(effectiveProfile ? { profile: effectiveProfile } : {}),
+      ...(effectivePriorities ? { priorities: effectivePriorities } : {}),
     });
     const serialized = serializeWeekPlan(newPlan);
 
