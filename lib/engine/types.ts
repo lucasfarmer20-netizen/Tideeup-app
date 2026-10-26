@@ -36,6 +36,33 @@ export type Priority =
   | 'clutter'
   | 'pet-mess';
 
+/** Kids by age band — each band is a count. */
+export type KidAgeBand = 'under5' | 'age5to12' | 'teen';
+export type KidAges = Record<KidAgeBand, number>;
+
+/** How the household wants its weekly time spread across the week. */
+export type TimeDistribution = 'spread' | 'weekends' | 'weekdays';
+
+/**
+ * Richer household profile from quiz v2. Every field is optional so older
+ * callers (saved plans, the Sunday cron, tests) keep working; the engine
+ * derives sensible values from the coarse fields when these are absent.
+ */
+export interface HouseholdProfile {
+  /** Adults in the home (≥1). Replaces the adult share of `householdCount`. */
+  adults?: number;
+  /** Kids by age band. Replaces the `kids` boolean when present. */
+  kidAges?: KidAges;
+  /** Number of bathrooms (1–4+). Scales bathroom-zone minutes. */
+  bathrooms?: number;
+  /** 1 or 2+ floors. 2+ adds stair/multi-floor overhead to floor tasks. */
+  floors?: 1 | 2;
+  /** Hours per week the household can give (replaces timePreference). */
+  weeklyHours?: number;
+  /** How those hours fall across the week. */
+  distribution?: TimeDistribution;
+}
+
 export type HomeSize = 'S' | 'M' | 'L' | 'XL';
 
 /** User-facing time commitment per day */
@@ -244,4 +271,6 @@ export interface PlannerInput {
    * from degradation (kept at their target cadence) when time is short.
    */
   priorities?: Priority[];
+  /** Quiz v2 profile. Optional; see HouseholdProfile. */
+  profile?: HouseholdProfile;
 }

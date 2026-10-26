@@ -6,6 +6,7 @@ import { serializeWeekPlan } from '@/utils/serialize.js';
 import type { PlannerInput, RotationState, HomeSize, TimePreference, HomeType, PetType, FlooringType, Zone } from '@/lib/engine/types.js';
 import type { SerializedWeekPlan } from '@/utils/serialize.js';
 import type { SundayEmailResult } from '@/types/api';
+import { profileSchema, prioritiesSchema, toHouseholdProfile } from '@/lib/validation/profile';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,7 +176,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Get household config
       const { data: household } = await supabase
         .from('households')
-        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state, members, no_go_days, day_budgets')
+        .select('home_size, home_type, household_count, pets, pet_types, kids, time_preference, flooring_types, rotation_state, members, no_go_days, day_budgets, profile, priorities')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -223,6 +224,14 @@ export async function GET(request: Request): Promise<NextResponse> {
         ...(Array.isArray(household.day_budgets) && (household.day_budgets as number[]).length === 7
           ? { dayBudgets: household.day_budgets as number[] }
           : {}),
+        ...(() => {
+          const sp = household.profile ? profileSchema.safeParse(household.profile) : null;
+          return sp?.success ? { profile: toHouseholdProfile(sp.data) } : {};
+        })(),
+        ...(() => {
+          const pp = Array.isArray(household.priorities) ? prioritiesSchema.safeParse(household.priorities) : null;
+          return pp?.success && pp.data.length > 0 ? { priorities: pp.data } : {};
+        })(),
       };
 
       const weekPlan = generateWeekPlan(plannerInput);

@@ -10,6 +10,7 @@ import type {
   Zone,
 } from './types.js';
 import { getSeasonWeight } from './seasons.js';
+import { effectiveHouseholdCount, kidChaosLevel, zoneMinuteMultiplier } from './profile.js';
 
 // ─── Frequency base weights ───────────────────────────────────────────────────
 // Daily tasks must always win allocation; monthly tasks compete at the bottom.
@@ -55,15 +56,16 @@ function petChaosLevel(petTypes: PetType[]): number {
 }
 
 // ─── Chaos score multiplier ───────────────────────────────────────────────────
-function chaosMultiplier(task: Task, petTypes: PetType[], kids: boolean): number {
+function chaosMultiplier(task: Task, petTypes: PetType[], kidLevel: number): number {
   const baseMin = task.typicalMinutes['M'];
   let bonus = 0;
   const petLevel = petChaosLevel(petTypes);
   if (petLevel > 0 && task.petBoost !== undefined && baseMin > 0) {
     bonus += (task.petBoost / baseMin) * task.chaosImpact * petLevel;
   }
-  if (kids && task.kidsBoost !== undefined && baseMin > 0) {
-    bonus += (task.kidsBoost / baseMin) * task.chaosImpact;
+  // kidLevel: 0 = none, 0.6 = legacy `kids: true` (one 5–12), up to 1.5.
+  if (kidLevel > 0 && task.kidsBoost !== undefined && baseMin > 0) {
+    bonus += (task.kidsBoost / baseMin) * task.chaosImpact * (kidLevel / 0.6);
   }
   return 1 + bonus;
 }
@@ -74,19 +76,21 @@ const SHARED_ZONES: ReadonlySet<Zone> = new Set([
   'kitchen', 'bathroom', 'living', 'laundry', 'general',
 ]);
 
-function estimateMinutes(
-  task: Task,
-  input: Pick<PlannerInput, 'homeSize' | 'householdCount' | 'petTypes' | 'kids'>,
-): number {
+type ScoreInput = Pick<PlannerInput, 'homeSize' | 'householdCount' | 'petTypes' | 'kids' | 'profile'>;
+
+function estimateMinutes(task: Task, input: ScoreInput): number {
   let minutes = task.typicalMinutes[input.homeSize];
   const hasPets = input.petTypes.length > 0;
   if (hasPets && task.petBoost) minutes += task.petBoost;
-  if (input.kids && task.kidsBoost) minutes += task.kidsBoost;
+  const kidLevel = kidChaosLevel(input);
+  if (kidLevel > 0 && task.kidsBoost) minutes += task.kidsBoost * (kidLevel / 0.6);
+  // Bathrooms and floors (quiz v2) scale the zone's minutes.
+  minutes *= zoneMinuteMultiplier(task.zone, task, input.profile);
   // 6+ household members: shared-space tasks take 40% longer
-  if (input.householdCount >= 6 && SHARED_ZONES.has(task.zone)) {
+  if (effectiveHouseholdCount(input) >= 6 && SHARED_ZONES.has(task.zone)) {
     minutes = Math.round(minutes * 1.4);
   }
-  return Math.round(minutes);
+  return Math.max(1, Math.round(minutes));
 }
 
 // ─── Household eligibility filter ────────────────────────────────────────────
@@ -126,15 +130,15 @@ export function isEligibleForHousehold(
  */
 export function scoreTask(
   task: Task,
-  input: Pick<PlannerInput, 'homeSize' | 'householdCount' | 'petTypes' | 'kids'>,
+  input: ScoreInput,
   season: Season,
 ): ScoredTask {
   const score =
     FREQUENCY_WEIGHT[task.frequency] *
     HOME_SIZE_SCORE_MULTIPLIER[input.homeSize] *
-    householdScoreMultiplier(input.householdCount) *
+    householdScoreMultiplier(effectiveHouseholdCount(input)) *
     getSeasonWeight(task.zone, season) *
-    chaosMultiplier(task, input.petTypes, input.kids);
+    chaosMultiplier(task, input.petTypes, kidChaosLevel(input));
 
   return {
     task,
@@ -151,7 +155,7 @@ export function scoreAndSort(
   tasks: Task[],
   input: Pick<
     PlannerInput,
-    'homeSize' | 'householdCount' | 'petTypes' | 'kids' | 'flooringTypes' | 'homeType'
+    'homeSize' | 'householdCount' | 'petTypes' | 'kids' | 'flooringTypes' | 'homeType' | 'profile'
   >,
   season: Season,
   currentMonth: number,

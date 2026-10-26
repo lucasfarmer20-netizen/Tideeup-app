@@ -4,7 +4,8 @@ import { generateWeekPlan } from '@/lib/engine/planner.js';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import { getServerUser } from '@/lib/supabase/session.js';
 import { serializeWeekPlan } from '@/utils/serialize';
-import type { PlannerInput, HomeSize, TimePreference, Task, RotationState, Season } from '@/lib/engine/types.js';
+import type { PlannerInput, HomeSize, TimePreference, Task, RotationState, Season, Priority, HouseholdProfile } from '@/lib/engine/types.js';
+import { profileSchema, prioritiesSchema, toHouseholdProfile } from '@/lib/validation/profile';
 import type { GeneratePlanResponse } from '@/types/api';
 
 // ─── Input schema ─────────────────────────────────────────────────────────────
@@ -17,6 +18,8 @@ const schema = z.object({
   kids: z.boolean(),
   flooringTypes: z.array(z.enum(['hardwood', 'carpet', 'tile', 'mixed'])),
   timePreference: z.enum(['quick', 'steady', 'thorough', 'batch']),
+  profile: profileSchema.optional(),
+  priorities: prioritiesSchema.optional(),
 });
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -39,6 +42,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const { homeSize, homeType, householdCount, petTypes, kids, flooringTypes, timePreference } = parsed.data;
+  const profile: HouseholdProfile | undefined = parsed.data.profile ? toHouseholdProfile(parsed.data.profile) : undefined;
+  const quizPriorities: Priority[] | undefined = parsed.data.priorities;
 
   // Detect authenticated user — reuses the same getServerUser() path that
   // works for server components (dashboard, etc.) so the cookie-reading logic
@@ -51,6 +56,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   let seasonOverride: Season | undefined;
   let noGoDays: number[] | undefined;
   let dayBudgets: number[] | undefined;
+  let storedProfile: HouseholdProfile | undefined;
+  let storedPriorities: Priority[] | undefined;
   let customTasks: Task[] | undefined;
 
   const authUser = await getServerUser();
@@ -83,7 +90,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const [hRes, ctRes] = await Promise.all([
           supabase
             .from('households')
-            .select('rotation_state, season_override, no_go_days, day_budgets')
+            .select('rotation_state, season_override, no_go_days, day_budgets, profile, priorities')
             .eq('user_id', authenticatedUserId)
             .maybeSingle(),
           isPaidUser
@@ -105,6 +112,14 @@ export async function POST(request: Request): Promise<NextResponse> {
           // Pro "Your week" sliders override the time_preference budget table.
           if (isPaidUser && Array.isArray(household.day_budgets) && (household.day_budgets as number[]).length === 7) {
             dayBudgets = household.day_budgets as number[];
+          }
+          if (household.profile && typeof household.profile === 'object') {
+            const sp = profileSchema.safeParse(household.profile);
+            if (sp.success) storedProfile = toHouseholdProfile(sp.data);
+          }
+          if (Array.isArray(household.priorities)) {
+            const pp = prioritiesSchema.safeParse(household.priorities);
+            if (pp.success && pp.data.length > 0) storedPriorities = pp.data;
           }
         }
 
@@ -148,6 +163,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     ...(noGoDays !== undefined ? { noGoDays } : {}),
     ...(dayBudgets !== undefined ? { dayBudgets } : {}),
     ...(customTasks !== undefined ? { customTasks } : {}),
+    ...((profile ?? storedProfile) !== undefined ? { profile: (profile ?? storedProfile) as HouseholdProfile } : {}),
+    ...((quizPriorities ?? storedPriorities) !== undefined ? { priorities: (quizPriorities ?? storedPriorities) as Priority[] } : {}),
   };
 
   // Run the engine (pure, synchronous)
@@ -172,6 +189,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         kids,
         flooring_types: flooringTypes,
         time_preference: timePreference,
+        ...(profile !== undefined ? { profile } : {}),
+        ...(quizPriorities !== undefined ? { priorities: quizPriorities } : {}),
         week_of: serialized.weekOf.slice(0, 10), // ISO date portion
         week_plan: serialized as unknown as import('@/lib/supabase/types').Json,
       })
@@ -198,6 +217,8 @@ export async function POST(request: Request): Promise<NextResponse> {
           kids,
           flooring_types: flooringTypes,
           time_preference: timePreference,
+          ...(profile !== undefined ? { profile } : {}),
+          ...(quizPriorities !== undefined ? { priorities: quizPriorities } : {}),
         },
         { onConflict: 'user_id' },
       );

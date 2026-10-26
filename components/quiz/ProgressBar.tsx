@@ -1,6 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 
-const STEP_LABELS = ['Home size', 'Home details', 'Your household', 'Your time', 'Review'];
+const STEP_LABELS = ['Your home', 'Home details', 'Your household', 'Your time', 'Priorities', 'Review'];
 // Endowed progress: starting above 0% increases quiz completion rate.
 const STEP_PROGRESS = [20, 45, 70, 90, 100];
 

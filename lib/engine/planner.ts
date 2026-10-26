@@ -24,6 +24,7 @@ import { detectSeason } from './seasons.js';
 import { scoreAndSort } from './scorer.js';
 import { filterByRotation } from './rotator.js';
 import { initDayPlans, canFit, placeTask } from './budgeter.js';
+import { deriveDayBudgets } from './profile.js';
 import {
   planOccurrences,
   trimToSupply,
@@ -147,10 +148,11 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
   // ── Step 3: Initialise day budgets ────────────────────────────────────────
   const days = initDayPlans(weekOf, input.timePreference);
 
-  if (input.dayBudgets && input.dayBudgets.length === 7) {
-    for (let i = 0; i < 7; i++) {
-      days[i]!.budget = Math.max(0, Math.round(input.dayBudgets[i] ?? 0));
-    }
+  // Explicit day budgets (Pro sliders) > profile hours + distribution (quiz
+  // v2) > the timePreference table. deriveDayBudgets applies that order.
+  const budgets = deriveDayBudgets(input);
+  for (let i = 0; i < 7; i++) {
+    days[i]!.budget = budgets[i] ?? days[i]!.budget;
   }
 
   if (input.noGoDays && input.noGoDays.length > 0) {
