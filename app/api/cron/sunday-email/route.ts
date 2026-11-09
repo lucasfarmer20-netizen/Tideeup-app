@@ -1,3 +1,4 @@
+import { unsubscribeUrl } from '@/lib/email/unsubscribe';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server.js';
@@ -39,9 +40,10 @@ const ZONE_LABEL: Record<string, string> = {
 };
 
 function buildSundayEmailHtml({
-  planUrl, primaryZone, mondayTasks, streak, lastWeekPct, rotationInsights, members,
+  planUrl, unsubscribeLink, primaryZone, mondayTasks, streak, lastWeekPct, rotationInsights, members,
 }: {
   planUrl: string;
+  unsubscribeLink: string;
   primaryZone: string;
   mondayTasks: { title: string; estimatedMinutes: number }[];
   streak: number;
@@ -133,7 +135,7 @@ function buildSundayEmailHtml({
 
   <p style="color:#94a3b8;font-size:12px;margin:0;border-top:1px solid #e2e8f0;padding-top:16px;">
     You're receiving this as a TideeUp Pro subscriber.<br>
-    <a href="${planUrl}" style="color:#0D9488;">Unsubscribe</a>
+    <a href="${unsubscribeLink}" style="color:#0D9488;">Unsubscribe from weekly emails</a>
   </p>
 </body>
 </html>`.trim();
@@ -162,7 +164,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     .from('users')
     .select('id, email')
     .eq('tier', 'paid')
-    .eq('subscription_status', 'active');
+    .eq('subscription_status', 'active')
+    .neq('email_status', 'unsubscribed');
 
   if (usersError || !paidUsers) {
     console.error('[sunday-email] Failed to fetch paid users:', usersError?.message);
@@ -170,6 +173,9 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const weekOf = getNextMondayMidnightUTC();
+  const previousWeek = new Date(weekOf);
+  previousWeek.setUTCDate(previousWeek.getUTCDate() - 7);
+  const previousWeekKey = previousWeek.toISOString().slice(0, 10);
 
   for (const user of paidUsers) {
     try {
@@ -189,7 +195,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Get streak (optional)
       const { data: streak } = await supabase
         .from('streaks')
-        .select('current_streak')
+        .select('current_streak, last_completed_week')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -238,24 +244,25 @@ export async function GET(request: Request): Promise<NextResponse> {
       const serialized = serializeWeekPlan(weekPlan);
 
       // ── Last week's completion rate (LTV task 3) ──────────────────────────
-      // The most recent existing plan is last week's (the new one isn't saved yet).
+      // Only the immediately preceding calendar week belongs in this summary.
       let lastWeekPct: number | null = null;
       const { data: prevPlan } = await supabase
         .from('plans')
         .select('id, week_plan')
         .eq('user_id', user.id)
-        .order('week_of', { ascending: false })
+        .eq('week_of', previousWeekKey)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (prevPlan) {
         const prevWeekPlan = (prevPlan as { week_plan: SerializedWeekPlan }).week_plan;
         const prevTotal = prevWeekPlan.days.reduce((sum, d) => sum + d.tasks.length, 0);
-        const { count } = await supabase
+        const { count, error: completionError } = await supabase
           .from('task_completions')
           .select('*', { count: 'exact', head: true })
           .eq('plan_id', (prevPlan as { id: string }).id);
-        if (prevTotal > 0) lastWeekPct = Math.round(((count ?? 0) / prevTotal) * 100);
+        if (!completionError && count !== null && prevTotal > 0) lastWeekPct = Math.min(100, Math.round((count / prevTotal) * 100));
       }
 
       // ── Rotation insights (LTV task 3) ────────────────────────────────────
@@ -320,6 +327,14 @@ export async function GET(request: Request): Promise<NextResponse> {
         continue;
       }
 
+      // Recheck suppression after plan work; fail closed if the lookup fails.
+      const { data: recipient, error: recipientError } = await supabase
+        .from('users').select('email_status').eq('id', user.id).maybeSingle();
+      if (recipientError || !recipient || recipient.email_status === 'unsubscribed') {
+        result.skipped++;
+        continue;
+      }
+      const unsubscribeLink = unsubscribeUrl(appUrl, user.id, cronSecret);
       const resend = new Resend(resendKey);
       const { error: emailError } = await resend.emails.send({
         from: fromEmail,
@@ -327,9 +342,11 @@ export async function GET(request: Request): Promise<NextResponse> {
         subject: 'Your TideeUp week is ready 🏠',
         html: buildSundayEmailHtml({
           planUrl,
+          unsubscribeLink,
           primaryZone,
           mondayTasks,
-          streak: streak?.current_streak ?? 0,
+          streak: streak?.last_completed_week === previousWeekKey && lastWeekPct !== null && lastWeekPct > 0
+            ? streak.current_streak : 0,
           lastWeekPct,
           rotationInsights: topInsights,
           members,
