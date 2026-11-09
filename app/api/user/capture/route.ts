@@ -299,7 +299,7 @@ async function sendWelcomeEmail({
       event_type: 'sent',
       payload: { type: 'welcome', plan_id: planId },
     });
-    await supabase.from('users').update({ email_status: 'sent' }).eq('id', userId);
+    await supabase.from('users').update({ email_status: 'sent' }).eq('id', userId).neq('email_status', 'unsubscribed');
   } catch (err) {
     console.warn('[capture] failed to record email event:', err);
   }
