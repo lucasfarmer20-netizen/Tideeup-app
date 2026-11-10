@@ -113,9 +113,9 @@ describe('balance and per-day budgets', () => {
   });
 
   it('spreads a degraded daily task across non-adjacent days when possible', () => {
-    const plan = generateWeekPlan(BASE);
+    const plan = generateWeekPlan({ ...BASE, priorities: ['clutter'] });
     const idx = plan.days
-      .map((d, i) => (d.tasks.some((t) => t.task.id === 'make-beds') ? i : -1))
+      .map((d, i) => (d.tasks.some((t) => t.task.id === 'tidy-common-areas') ? i : -1))
       .filter((i) => i >= 0);
     expect(idx.length).toBeGreaterThanOrEqual(2);
     if (idx.length <= 3) {
@@ -136,10 +136,13 @@ describe('balance and per-day budgets', () => {
     expect(plan.metadata.pressure.supplyMinutes).toBe(260);
   });
 
-  it('priorities protect matching tasks from trimming', () => {
+  it('priorities increase matching work and report remaining unmet preferences', () => {
+    const normal = generateWeekPlan({ ...BASE, timePreference: 'quick' });
     const plan = generateWeekPlan({ ...BASE, timePreference: 'quick', priorities: ['floors'] });
-    const trimmed = plan.metadata.pressure.trimmed.map((t) => t.taskId);
-    expect(trimmed).not.toContain('sweep-high-traffic');
-    expect(trimmed).not.toContain('mop-kitchen-floor');
+    const floorMinutes = (p: typeof plan) => p.days.flatMap(d => d.tasks).filter(t => t.task.tags.includes('floors')).reduce((n, t) => n + t.estimatedMinutes, 0);
+    expect(floorMinutes(plan)).toBeGreaterThan(floorMinutes(normal));
+    const missing = plan.metadata.workload!.outcomes.filter(o => o.priority && o.scheduled < o.target);
+    expect(missing.length).toBeGreaterThan(0);
+    for (const task of missing) expect(plan.metadata.pressure.trimmed).toContainEqual({ taskId: task.taskId, title: task.title, from: task.target, to: task.scheduled });
   });
 });

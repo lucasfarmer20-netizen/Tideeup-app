@@ -7,7 +7,15 @@ export const kidAgesSchema = z.object({
   teen:     z.number().int().min(0).max(8),
 });
 
+export const setupSchema = z.object({
+  dishes:      z.enum(['dishwasher', 'hand']).optional(),
+  robotVacuum: z.boolean().optional(),
+  laundry:     z.enum(['in-home', 'shared']).optional(),
+  lawn:        z.boolean().optional(),
+}).strict();
+
 export const profileSchema = z.object({
+  setup:        setupSchema.optional(),
   adults:       z.number().int().min(1).max(8).optional(),
   kidAges:      kidAgesSchema.optional(),
   bathrooms:    z.number().int().min(1).max(4).optional(),
@@ -19,7 +27,7 @@ export const profileSchema = z.object({
 export const prioritySchema = z.enum(['kitchen-reset', 'bathrooms', 'floors', 'clutter', 'pet-mess']);
 export const prioritiesSchema = z.array(prioritySchema).max(3);
 
-import type { HouseholdProfile } from '@/lib/engine/types.js';
+import type { HouseholdProfile, HouseholdSetup } from '@/lib/engine/types.js';
 
 /**
  * Zod's `.optional()` output permits explicit `undefined` values, which the
@@ -34,5 +42,13 @@ export function toHouseholdProfile(p: z.infer<typeof profileSchema>): HouseholdP
   if (p.floors !== undefined) out.floors = p.floors;
   if (p.weeklyHours !== undefined) out.weeklyHours = p.weeklyHours;
   if (p.distribution !== undefined) out.distribution = p.distribution;
+  if (p.setup !== undefined) {
+    const setup: HouseholdSetup = {};
+    if (p.setup.dishes !== undefined) setup.dishes = p.setup.dishes;
+    if (p.setup.robotVacuum !== undefined) setup.robotVacuum = p.setup.robotVacuum;
+    if (p.setup.laundry !== undefined) setup.laundry = p.setup.laundry;
+    if (p.setup.lawn !== undefined) setup.lawn = p.setup.lawn;
+    if (Object.keys(setup).length > 0) out.setup = setup;
+  }
   return out;
 }

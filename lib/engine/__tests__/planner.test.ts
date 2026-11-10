@@ -76,18 +76,21 @@ describe('generateWeekPlan — daily stabilisers', () => {
     expect(daysWithDailyTasks).toBe(7);
   });
 
-  it('protected stabilisers (dishes, pickup) are never trimmed', () => {
+  it('essential dishes remain daily while flexible pickup has a truthful final count', () => {
     const plan = generateWeekPlan({ ...BASE_INPUT, timePreference: 'quick' });
     const trimmedIds = plan.metadata.pressure.trimmed.map((t) => t.taskId);
     expect(trimmedIds).not.toContain('dishes');
-    expect(trimmedIds).not.toContain('tidy-common-areas');
+    const pickup = plan.metadata.workload!.outcomes.find(o => o.taskId === 'tidy-common-areas')!;
+    expect(pickup.target).toBe(3);
+    expect(pickup.scheduled).toBe(plan.days.filter(d => d.tasks.some(t => t.task.id === pickup.taskId)).length);
   });
 
-  it('degradable stabilisers keep at least their cadence floor', () => {
-    // make-beds is 7/2: under heavy pressure it must still appear on ≥2 days
+  it('optional bed making cannot displace all bathroom and laundry maintenance', () => {
     const plan = generateWeekPlan({ ...BASE_INPUT, timePreference: 'quick', homeSize: 'S' });
-    const bedDays = plan.days.filter((d) => d.tasks.some((t) => t.task.id === 'make-beds')).length;
-    expect(bedDays).toBeGreaterThanOrEqual(2);
+    const ids = plan.days.flatMap(d => d.tasks.map(t => t.task.id));
+    expect(ids).toContain('quick-bathroom-wipe');
+    expect(ids).toContain('laundry-wash-dry');
+    expect(plan.metadata.workload!.outcomes.find(o => o.taskId === 'make-beds')!.essential).toBe(0);
   });
 
   it('weekdays carry weekly tasks at steady — not stabilisers only', () => {

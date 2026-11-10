@@ -6,12 +6,13 @@ import { useQuiz } from '@/hooks/useQuiz';
 import { ProgressBar } from './ProgressBar';
 import { HomeSizeStep } from './steps/HomeSizeStep';
 import { HomeDetailsStep } from './steps/HomeDetailsStep';
+import { SetupStep } from './steps/SetupStep';
 import { HouseholdStep } from './steps/HouseholdStep';
 import { TimePreferenceStep } from './steps/TimePreferenceStep';
 import { PrioritiesStep } from './steps/PrioritiesStep';
 import { ReviewStep } from './steps/ReviewStep';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 function QuizContent() {
   const { state, set, setAndAdvance, advance, back, goToStep, canAdvance } = useQuiz();
@@ -38,10 +39,11 @@ function QuizContent() {
       <main className="max-w-lg mx-auto px-4 py-8">
         {state.step === 1 && <HomeSizeStep {...stepProps} />}
         {state.step === 2 && <HomeDetailsStep {...stepProps} />}
-        {state.step === 3 && <HouseholdStep {...stepProps} />}
-        {state.step === 4 && <TimePreferenceStep {...stepProps} />}
-        {state.step === 5 && <PrioritiesStep {...stepProps} />}
-        {state.step === 6 && <ReviewStep {...stepProps} />}
+        {state.step === 3 && <SetupStep {...stepProps} />}
+        {state.step === 4 && <HouseholdStep {...stepProps} />}
+        {state.step === 5 && <TimePreferenceStep {...stepProps} />}
+        {state.step === 6 && <PrioritiesStep {...stepProps} />}
+        {state.step === 7 && <ReviewStep {...stepProps} />}
       </main>
     </div>
   );

@@ -164,12 +164,12 @@ export function buildPressureReport(
   trimmed: TrimmedTask[],
 ): PressureReport {
   const demand = demandMinutes(planned, 'ideal');
-  const ratio = supplyMinutes > 0 ? demand / supplyMinutes : Infinity;
+  const ratio = supplyMinutes > 0 ? Math.round(demand / supplyMinutes * 100) / 100 : null;
   const coverage = demand > 0 ? Math.min(1, plannedMinutes / demand) : 1;
   return {
     supplyMinutes,
     demandMinutes: Math.round(demand),
-    ratio: Math.round(ratio * 100) / 100,
+    ratio,
     coverage: Math.round(coverage * 100) / 100,
     trimmed,
   };
