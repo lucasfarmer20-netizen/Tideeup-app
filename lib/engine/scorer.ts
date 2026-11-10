@@ -79,6 +79,10 @@ const SHARED_ZONES: ReadonlySet<Zone> = new Set([
 type ScoreInput = Pick<PlannerInput, 'homeSize' | 'householdCount' | 'petTypes' | 'kids' | 'profile'>;
 
 function estimateMinutes(task: Task, input: ScoreInput): number {
+  // A custom estimate already describes the entire user-defined task. Applying
+  // library zone/household multipliers would silently change that saved estimate.
+  if (task.tags.includes('custom')) return task.typicalMinutes[input.homeSize];
+  if (task.work) return task.work.minutes;
   let minutes = task.typicalMinutes[input.homeSize];
   const hasPets = input.petTypes.length > 0;
   if (hasPets && task.petBoost) minutes += task.petBoost;

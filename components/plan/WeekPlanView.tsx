@@ -288,7 +288,7 @@ export function WeekPlanView({
 
       {/* Coverage — how much of what the home needs fits in the time given.
           Older saved plans predate the pressure report, so guard for it. */}
-      {!isBlurred && plan.metadata.pressure && plan.metadata.pressure.ratio > 1.15 && (
+      {!isBlurred && plan.metadata.pressure && (plan.metadata.pressure.ratio ?? 0) > 1.15 && (
         <CoverageNote pressure={plan.metadata.pressure} />
       )}
 

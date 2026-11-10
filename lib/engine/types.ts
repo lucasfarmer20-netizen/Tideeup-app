@@ -49,6 +49,9 @@ export type TimeDistribution = 'spread' | 'weekends' | 'weekdays';
  * derives sensible values from the coarse fields when these are absent.
  */
 export interface HouseholdProfile {
+  /** P3 additions are opt-in; historical unversioned profiles stay included. */
+  version?: 3;
+  upkeepTime?: UpkeepTime;
   /** Adults in the home (≥1). Replaces the adult share of `householdCount`. */
   adults?: number;
   /** Kids by age band. Replaces the `kids` boolean when present. */
@@ -64,6 +67,8 @@ export interface HouseholdProfile {
 }
 
 export type HomeSize = 'S' | 'M' | 'L' | 'XL';
+
+export type UpkeepTime = { mode: 'included' } | { mode: 'separate'; additionalDayBudgets: number[] };
 
 /** User-facing time commitment per day */
 export type TimePreference = 'quick' | 'steady' | 'thorough' | 'batch';
@@ -144,6 +149,17 @@ export interface Task {
    * null = applies to all home types.
    */
   homeTypes: HomeType[] | null;
+  /** P2 planning metadata. Absent on historical plans and caller-defined tasks. */
+  work?: {
+    kind: 'upkeep' | 'cleaning';
+    category: CleaningCategory;
+    scope: string;
+    /** A calibrated active-time estimate, never an implicit partial completion. */
+    minutes: number;
+    essentialOccurrences: number;
+    /** A distinct task ID gives credit only for this explicitly smaller scope. */
+    alternativeFor?: string;
+  };
 }
 
 // ─── Engine internal ──────────────────────────────────────────────────────────
@@ -175,6 +191,41 @@ export interface DayPlan {
   budget: number;
   /** Cumulative fatigue (sum of fatigueCost for placed tasks) */
   fatigue: number;
+  workload?: {
+    sessionBudget: number;
+    additionalUpkeepBudget: number;
+    upkeepMinutes: number;
+    cleaningMinutes: number;
+  };
+}
+
+export type CleaningCategory = 'kitchen' | 'bathroom' | 'floors' | 'laundry' | 'bedroom' | 'clutter' | 'outdoor' | 'rotating' | 'pet-care' | 'custom';
+export interface TaskOutcome {
+  taskId: string;
+  title: string;
+  category: CleaningCategory;
+  scope: string;
+  kind: 'upkeep' | 'cleaning';
+  estimatedMinutes: number;
+  target: number;
+  scheduled: number;
+  essential: number;
+  priority: boolean;
+  overdue: boolean;
+  reason: 'task_too_long' | 'fatigue_limit' | 'capacity' | null;
+  /** For daily upkeep, exact original day indices with no placement. */
+  missingDays: number[];
+  alternatives: { taskId: string; title: string; scope: string; scheduled: number }[];
+}
+export interface WorkloadReport {
+  version: 2;
+  mode: 'included' | 'separate';
+  sessionBudgetMinutes: number;
+  additionalUpkeepBudgetMinutes: number;
+  upkeepMinutes: number;
+  cleaningMinutes: number;
+  totalMinutes: number;
+  outcomes: TaskOutcome[];
 }
 
 /** One task whose cadence was reduced because demand exceeded supply. */
@@ -195,8 +246,8 @@ export interface PressureReport {
   supplyMinutes: number;
   /** Minutes the full-cadence plan would have needed */
   demandMinutes: number;
-  /** demandMinutes / supplyMinutes (Infinity when supply is 0) */
-  ratio: number;
+  /** demandMinutes / supplyMinutes; null explicitly means no available supply. */
+  ratio: number | null;
   /** Minutes actually planned / demandMinutes */
   coverage: number;
   trimmed: TrimmedTask[];
@@ -212,7 +263,18 @@ export interface WeekPlan {
     totalMinutesPlanned: number;
     season: Season;
     pressure: PressureReport;
+    /** Due custom tasks with zero placements; independent of the 10-item spillover. */
+    unscheduledCustomTasks?: UnscheduledCustomTask[];
+    workload?: WorkloadReport;
   };
+}
+
+export interface UnscheduledCustomTask {
+  taskId: string;
+  title: string;
+  frequency: Task['frequency'];
+  estimatedMinutes: number;
+  reason: 'daily_budget' | 'week_capacity';
 }
 
 // ─── Rotation state (paid tier) ───────────────────────────────────────────────
@@ -273,4 +335,9 @@ export interface PlannerInput {
   priorities?: Priority[];
   /** Quiz v2 profile. Optional; see HouseholdProfile. */
   profile?: HouseholdProfile;
+  /** Explicit engine contract; P3 must obtain/persist this choice before exposing
+   * it as a household preference. Existing profiles always default to included.
+   * Separate mode requires seven additional, confirmed minute limits (Mon–Sun).
+   * Combined daily capacity remains <=180, and no-go days remain empty. */
+  upkeepTime?: { mode: 'included' } | { mode: 'separate'; additionalDayBudgets: number[] };
 }

@@ -80,22 +80,63 @@ export function zoneMinuteMultiplier(zone: Zone, task: { tags: string[] }, profi
 // directly.
 
 const DISTRIBUTION_WEIGHTS: Record<TimeDistribution, number[]> = {
+  // Original ratios scaled by 10 so remainder comparisons use exact integers.
   // Mon  Tue  Wed  Thu  Fri  Sat  Sun
-  spread:   [1.0, 1.0, 1.0, 1.0, 1.0, 1.3, 1.2],
-  weekends: [0.4, 0.4, 0.4, 0.4, 0.4, 2.6, 2.0],
-  weekdays: [1.3, 1.3, 1.3, 1.3, 1.3, 0.6, 0.6],
+  spread:   [10, 10, 10, 10, 10, 13, 12],
+  weekends: [4, 4, 4, 4, 4, 26, 20],
+  weekdays: [13, 13, 13, 13, 13, 6, 6],
 };
 
 const DOW_MONDAY_FIRST = [1, 2, 3, 4, 5, 6, 0] as const;
+const MINUTES_PER_UNIT = 5;
+const MAX_DAY_MINUTES = 180;
+const MAX_DAY_UNITS = MAX_DAY_MINUTES / MINUTES_PER_UNIT;
 
-/** Round to the nearest 5 minutes, clamp to 0–180 (the slider's range). */
-function snap(minutes: number): number {
-  return Math.max(0, Math.min(180, Math.round(minutes / 5) * 5));
+/** Capped largest-remainder apportionment; ties go to the earlier weekday. */
+function allocateWeeklyBudget(weeklyHours: number, weights: number[]): number[] {
+  // Clamp before multiplying to avoid overflow for huge finite inputs. Round
+  // only the weekly total: nearest five minutes, with half units rounded up.
+  const capacityHours = weights.length * MAX_DAY_MINUTES / 60;
+  let remaining = Math.round(Math.min(weeklyHours, capacityHours) * (60 / MINUTES_PER_UNIT));
+  const days = weights.map((weight, index) => ({ weight, index, units: 0 }));
+  let active = days;
+
+  while (remaining > 0 && active.length > 0) {
+    const totalWeight = active.reduce((sum, day) => sum + day.weight, 0);
+    const capped = active.filter((day) => remaining * day.weight >= MAX_DAY_UNITS * totalWeight);
+    if (capped.length > 0) {
+      for (const day of capped) day.units = MAX_DAY_UNITS;
+      remaining -= capped.length * MAX_DAY_UNITS;
+      // Recompute the shares among uncapped days; none of the excess is lost.
+      active = active.filter((day) => day.units < MAX_DAY_UNITS);
+      continue;
+    }
+
+    const shares = active.map((day) => ({
+      day,
+      units: Math.floor(remaining * day.weight / totalWeight),
+      remainder: remaining * day.weight % totalWeight,
+    }));
+    for (const share of shares) {
+      share.day.units = share.units;
+      remaining -= share.units;
+    }
+    shares.sort((a, b) => b.remainder - a.remainder || a.day.index - b.day.index);
+    for (const { day } of shares) {
+      if (remaining === 0) break;
+      day.units += 1;
+      remaining -= 1;
+    }
+  }
+
+  return days.map((day) => day.units * MINUTES_PER_UNIT);
 }
 
 /**
  * Seven Monday-first day budgets. Prefers, in order: explicit `dayBudgets`,
  * the profile's weekly hours + distribution, then the timePreference table.
+ * Zero hours means zero supply. Invalid (negative/non-finite) weekly hours
+ * use the legacy table. Explicit day budgets keep their existing semantics.
  */
 export function deriveDayBudgets(
   input: Pick<PlannerInput, 'timePreference' | 'dayBudgets' | 'profile'>,
@@ -104,11 +145,9 @@ export function deriveDayBudgets(
     return input.dayBudgets.map((m) => Math.max(0, Math.round(m)));
   }
   const p = input.profile;
-  if (p?.weeklyHours !== undefined && p.weeklyHours > 0) {
+  if (p?.weeklyHours !== undefined && Number.isFinite(p.weeklyHours) && p.weeklyHours >= 0) {
     const weights = DISTRIBUTION_WEIGHTS[p.distribution ?? 'spread'];
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    const totalMinutes = p.weeklyHours * 60;
-    return weights.map((w) => snap((totalMinutes * w) / totalWeight));
+    return allocateWeeklyBudget(p.weeklyHours, weights);
   }
   return DOW_MONDAY_FIRST.map((dow) => getDayBudget(dow, input.timePreference));
 }
