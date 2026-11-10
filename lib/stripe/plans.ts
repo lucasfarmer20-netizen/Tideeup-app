@@ -19,7 +19,7 @@
 export type BillingInterval = 'month' | 'year';
 
 export const FREE_FEATURES = [
-  'Personalised 7-day cleaning plan',
+  'Personalized 7-day cleaning plan',
   'Zone-anchored scheduling',
   'Seasonal task weighting',
   'Chaos adjustment (pets & kids)',

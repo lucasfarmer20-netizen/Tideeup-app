@@ -74,8 +74,13 @@ function Hero() {
           {/* Trust row */}
           <div className="flex flex-col sm:flex-row items-center lg:items-start gap-2 sm:gap-4 pt-2">
             <p className="text-sm text-muted-foreground">
-              Takes 60 seconds · Printable &amp; mobile-ready · No account needed
+              About 2 minutes · Printable &amp; mobile-ready · No account needed
             </p>
+          </div>
+          <div className="text-sm text-center lg:text-left">
+            <Link href="/plan/resume" prefetch={false} className="font-medium text-primary underline underline-offset-2 hover:no-underline">
+              Already made a plan? Return to it
+            </Link>
           </div>
         </div>
 
@@ -94,7 +99,7 @@ const HOW_STEPS = [
   {
     icon: Home,
     title: 'Tell us about your home',
-    body: 'Home size, flooring, who lives there, pets, and your daily time budget. A few quick questions, about a minute.',
+    body: 'Home size, flooring, who lives there, pets, and your daily time budget. A few quick questions, about two minutes.',
   },
   {
     icon: Sparkles,
@@ -149,7 +154,7 @@ const FREE_FEATURES = [
   'Tailored to your flooring, pets & kids',
   'Zone-anchored & fatigue-balanced days',
   'Interactive checklist + printable view',
-  'Emailed link so you can bookmark it',
+  'Optional emailed link so you never lose it',
 ];
 
 const PRO_FEATURES = [

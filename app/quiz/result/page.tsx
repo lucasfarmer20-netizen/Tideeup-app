@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, BookmarkCheck, Sparkles } from 'lucide-react';
+import { BookmarkCheck } from 'lucide-react';
 import { WeekPlanView } from '@/components/plan/WeekPlanView';
 import { EmailRevealGate } from '@/components/reveal/EmailRevealGate';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -106,7 +106,7 @@ function ResultContent() {
       if (email) setCapturedEmail(email);
       setIsRevealed(true);
       // Update the URL for bookmarking without navigating away.
-      // Staying on this page keeps the upgrade prompts (LockedFeature blocks)
+      // Staying on this page keeps the plan and its Pro prompt
       // visible immediately after the reveal.
       if (planId) {
         window.history.replaceState(null, '', `/plan/${planId}`);
@@ -140,10 +140,6 @@ function ResultContent() {
     );
   }
 
-  const pricingHref = capturedEmail
-    ? `/pricing?email=${encodeURIComponent(capturedEmail)}`
-    : '/pricing';
-
   return (
     <div className="relative">
       {!plan ? (
@@ -158,31 +154,26 @@ function ResultContent() {
             <EmailRevealGate
               planId={planId}
               onReveal={handleReveal}
-              totalTasks={plan.metadata.totalTasksScheduled}
+              totalTasks={new Set(plan.days.flatMap((d) => d.tasks.map((t) => t.task.id))).size}
               totalMinutes={plan.metadata.totalMinutesPlanned}
             />
           )}
 
-          {/* Post-reveal confirmation & Pro upgrade banner */}
-          {isRevealed && (
-            <div className="mt-8 rounded-2xl bg-surface border-2 border-primary/25 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <BookmarkCheck className="w-4 h-4 text-primary shrink-0" />
-                  <p className="font-semibold">
-                    Plan unlocked{capturedEmail ? ` & sent to ${capturedEmail}` : ''}
-                  </p>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Want TideeUp to remember what you cleaned this week, assign tasks to family members, and send a fresh plan every Sunday?
-                </p>
-              </div>
-              <Button asChild size="default" className="shrink-0 w-full sm:w-auto">
-                <Link href={pricingHref}>
-                  <Sparkles className="w-4 h-4" />
-                  Upgrade to Pro — from $5/mo
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+          {/* After the reveal: confirm the email, or offer it again if skipped.
+              The plan view below already carries the Pro prompts. */}
+          {isRevealed && capturedEmail && (
+            <div className="mt-8 rounded-2xl bg-surface border p-5 flex items-center gap-2 shadow-sm animate-fade-in">
+              <BookmarkCheck className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm font-medium">Plan link sent to {capturedEmail}</p>
+            </div>
+          )}
+          {isRevealed && !capturedEmail && isAuthenticated === false && (
+            <div className="mt-8 rounded-2xl bg-surface border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-fade-in">
+              <p className="text-sm text-muted-foreground">
+                This plan stays in this browser for 7 days. Want the link in your inbox so you can open it anywhere?
+              </p>
+              <Button variant="outline" className="shrink-0" onClick={() => setIsRevealed(false)}>
+                Email me the link
               </Button>
             </div>
           )}

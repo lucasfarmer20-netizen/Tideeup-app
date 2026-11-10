@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DayCard } from './DayCard';
 import { SpilloverList } from './SpilloverList';
-import { LockedFeature } from './LockedFeature';
 import type { WeekPlan } from '@/lib/engine/types.js';
 import { deserializeWeekPlan } from '@/utils/serialize';
 import type { SerializedWeekPlan } from '@/utils/serialize';
@@ -26,6 +25,9 @@ interface WeekPlanViewProps {
   canComplete?: boolean;
 }
 
+/** Optional beta feedback form. The link only renders when this is set. */
+const FEEDBACK_URL = process.env.NEXT_PUBLIC_FEEDBACK_URL;
+
 const SEASON_EMOJI: Record<string, string> = {
   spring: '🌸', summer: '☀️', fall: '🍂', winter: '❄️',
 };
@@ -33,7 +35,9 @@ const SEASON_EMOJI: Record<string, string> = {
 function formatWeekRange(weekOf: Date): string {
   const end = new Date(weekOf);
   end.setUTCDate(end.getUTCDate() + 6);
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  // Plan dates are calendar markers stored at UTC midnight. Format them in UTC
+  // so a viewer west of Greenwich does not see the week start a day early.
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', timeZone: 'UTC' };
   return `${weekOf.toLocaleDateString('en-US', opts)} – ${end.toLocaleDateString('en-US', opts)}`;
 }
 
@@ -46,14 +50,16 @@ function getDayDate(day: WeekPlan['days'][number]): Date {
   return day.date instanceof Date ? day.date : new Date(day.date as unknown as string);
 }
 
-function isToday(day: WeekPlan['days'][number]): boolean {
+/** Calendar key (YYYYMMDD as a number) of a plan day, read from its UTC marker. */
+function dayKey(day: WeekPlan['days'][number]): number {
   const d = getDayDate(day);
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+
+/** The viewer's own calendar date, in the same key form. */
+function localTodayKey(): number {
   const now = new Date();
-  return (
-    d.getUTCFullYear() === now.getUTCFullYear() &&
-    d.getUTCMonth() === now.getUTCMonth() &&
-    d.getUTCDate() === now.getUTCDate()
-  );
+  return now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 }
 
 function localStorageCompletionKey(planId: string): string {
@@ -80,6 +86,14 @@ export function WeekPlanView({
   // - Anonymous/free viewers save to `localStorage` so they get immediate utility
   const showCompletion = Boolean(planId && !isBlurred);
   const totalTasks = plan.days.reduce((sum, d) => sum + d.tasks.length, 0);
+  // A daily chore counts once here, not seven times.
+  const distinctTasks = new Set(plan.days.flatMap((d) => d.tasks.map((t) => t.task.id))).size;
+
+  // "Today" is the viewer's own calendar day, known only in the browser, so it
+  // is set after mount to keep server and client markup identical.
+  const [todayKey, setTodayKey] = useState<number | null>(null);
+  useEffect(() => setTodayKey(localTodayKey()), []);
+  const startedMidWeek = todayKey !== null && plan.days.some((d) => dayKey(d) < todayKey) && plan.days.some((d) => dayKey(d) >= todayKey);
 
   // Per-task completion: keys are `${dayIndex}:${taskId}`.
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
@@ -204,7 +218,7 @@ export function WeekPlanView({
               {SEASON_EMOJI[season] ?? ''} {season.charAt(0).toUpperCase() + season.slice(1)} schedule
             </Badge>
             <Badge variant="muted">
-              {plan.metadata.totalTasksScheduled} tasks tailored to your home
+              {distinctTasks} tasks tailored to your home
             </Badge>
             <Badge variant="muted">
               ~{hoursPlanned}h total across 7 days
@@ -233,8 +247,8 @@ export function WeekPlanView({
               {weekComplete
                 ? '🎉 Week complete — nice work!'
                 : completedCount === 0
-                  ? `Tap any task below to check it off (${totalTasks} tasks this week)`
-                  : `${completedCount} of ${totalTasks} tasks done`}
+                  ? 'Tap any task below to check it off'
+                  : `${completedCount} of ${totalTasks} check-offs done`}
             </span>
             <span className="text-muted-foreground font-medium">{progressPct}%</span>
           </div>
@@ -266,6 +280,12 @@ export function WeekPlanView({
         </div>
       )}
 
+      {startedMidWeek && !isBlurred && completedKeys.size === 0 && (
+        <p className="text-sm text-muted-foreground no-print">
+          You&rsquo;re starting partway through the week, so begin with today. Earlier days are greyed out.
+        </p>
+      )}
+
       {/* 7-day grid — blurred only before email reveal */}
       <div
         className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-all duration-700 ${
@@ -276,7 +296,8 @@ export function WeekPlanView({
           <DayCard
             key={i}
             day={day}
-            isToday={isToday(day)}
+            isToday={todayKey !== null && dayKey(day) === todayKey}
+            isPast={todayKey !== null && dayKey(day) < todayKey}
             {...(isPaid && members?.length ? { members, onAssign: handleAssign } : {})}
             assignments={assignments}
             {...(showCompletion
@@ -289,30 +310,39 @@ export function WeekPlanView({
       {/* Coverage — how much of what the home needs fits in the time given.
           Older saved plans predate the pressure report, so guard for it. */}
       {!isBlurred && plan.metadata.pressure && (plan.metadata.pressure.ratio ?? 0) > 1.15 && (
-        <CoverageNote pressure={plan.metadata.pressure} />
+        <CoverageNote pressure={plan.metadata.pressure} isPaid={isPaid} hasSpillover={plan.spillover.length > 0} />
       )}
 
       {/* Spillover */}
       {!isBlurred && plan.spillover.length > 0 && (
-        <SpilloverList tasks={plan.spillover} homeSize={homeSize} isPaid={isPaid} />
+        <SpilloverList tasks={plan.spillover} isPaid={isPaid} />
       )}
 
-      {/* Locked feature gates — only for free users */}
+      {/* One Pro summary for free users. The contextual nudges above (after a
+          first check-off, and beside what did not fit) carry the rest. */}
       {!isBlurred && !isPaid && (
-        <div className="space-y-3 pt-2">
-          <div className="flex items-baseline justify-between gap-2 flex-wrap">
-            <h3 className="text-base font-semibold">Put your home on autopilot with TideeUp Pro</h3>
-            <Link href="/pricing" className="text-xs font-semibold text-primary hover:underline">
-              See all Pro features →
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <LockedFeature feature="rotation_memory" />
-            <LockedFeature feature="member_assignment" />
-            <LockedFeature feature="sunday_email" />
-            <LockedFeature feature="custom_tasks" />
-          </div>
+        <div className="rounded-xl border bg-card p-5 space-y-3 no-print">
+          <h3 className="text-base font-semibold">Want next week planned for you?</h3>
+          <ul className="grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2">
+            <li>Remembers what you finished and rotates the rest in</li>
+            <li>A fresh plan in your inbox every Sunday</li>
+            <li>Assign tasks to a partner or kids</li>
+            <li>Your own tasks and no-go days</li>
+          </ul>
+          <Link href="/pricing" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+            See TideeUp Pro — $7/mo or $60/yr
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
+      )}
+
+      {FEEDBACK_URL && !isBlurred && (
+        <p className="text-center text-sm text-muted-foreground no-print">
+          Does this plan look right for your home?{' '}
+          <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+            Tell us what you think
+          </a>
+        </p>
       )}
     </div>
   );
@@ -320,26 +350,36 @@ export function WeekPlanView({
 
 // ─── Coverage note ────────────────────────────────────────────────────────────
 
-function CoverageNote({ pressure }: { pressure: NonNullable<WeekPlan['metadata']['pressure']> }) {
-  const pct = Math.round(pressure.coverage * 100);
-  const needHours = Math.round(pressure.demandMinutes / 60);
+function CoverageNote({
+  pressure,
+  isPaid,
+  hasSpillover,
+}: {
+  pressure: NonNullable<WeekPlan['metadata']['pressure']>;
+  isPaid: boolean;
+  hasSpillover: boolean;
+}) {
   const haveHours = Math.round((pressure.supplyMinutes / 60) * 10) / 10;
   const trimmedDaily = pressure.trimmed.filter((t) => t.to > 0);
 
+  // States what the week does cover. No percentage and no "hours your home
+  // needs": a busy household should not open its first plan to a failing grade.
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 no-print">
+    <div className="rounded-xl border bg-card px-4 py-3 text-sm no-print">
       <p className="font-medium">
-        This plan covers about {pct}% of what your home needs each week.
+        Your {haveHours} {haveHours === 1 ? 'hour' : 'hours'} this week go to the daily basics and the jobs that matter most.
       </p>
-      <p className="mt-1 text-amber-800/90">
-        Your home adds up to roughly {needHours} hours a week; you&rsquo;ve set aside about {haveHours}.
-        We kept the essentials every day
+      <p className="mt-1 text-muted-foreground">
+        Not everything fits in that time, and that&rsquo;s normal.
         {trimmedDaily.length > 0 && (
           <>
-            , scaled back {trimmedDaily.length === 1 ? 'one habit' : `${trimmedDaily.length} habits`} to a few days a week
+            {' '}We spread {trimmedDaily.length === 1 ? 'one habit' : `${trimmedDaily.length} habits`} over a few days instead of every day.
           </>
         )}
-        , and pushed the rest to later weeks &mdash; they&rsquo;ll rotate back in.
+        {hasSpillover &&
+          (isPaid
+            ? ' What didn\u2019t fit is listed below and moves to the front of next week.'
+            : ' What didn\u2019t fit is listed below.')}
       </p>
     </div>
   );

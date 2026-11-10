@@ -79,7 +79,7 @@ export function HouseholdStep({ state, set, advance, back }: Props) {
         </div>
         <h2 className="text-2xl font-bold">Who lives in your home?</h2>
         <p className="text-muted-foreground">
-          More people and pets means more tasks — and more hands to help.
+          More people and pets means more to keep up with.
         </p>
       </div>
 
@@ -100,7 +100,7 @@ export function HouseholdStep({ state, set, advance, back }: Props) {
         <div className="text-center">
           <p className="text-sm font-medium">Kids at home</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Little ones add mess; teens can take a share of the work.
+            Younger kids add the most mess.
           </p>
         </div>
         <div className="space-y-2">

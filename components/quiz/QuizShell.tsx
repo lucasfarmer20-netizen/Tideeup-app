@@ -28,7 +28,7 @@ function QuizContent() {
               TideeUp
             </Link>
             <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-pill">
-              Takes ~60 sec
+              About 2 minutes
             </span>
           </div>
           <ProgressBar currentStep={state.step} totalSteps={TOTAL_STEPS} />
