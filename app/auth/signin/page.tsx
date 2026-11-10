@@ -1,12 +1,24 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { safeNext } from '@/lib/auth/next';
 
 export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
+  const upgrading = next.startsWith('/pricing');
+  const [email, setEmail] = useState(searchParams.get('email') ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +34,7 @@ export default function SignInPage() {
       const res = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, next }),
       });
 
       const data = (await res.json()) as { message?: string };
@@ -33,7 +45,7 @@ export default function SignInPage() {
       }
 
       router.push(
-        `/auth/verify?email=${encodeURIComponent(trimmed)}&next=${encodeURIComponent('/dashboard')}`,
+        `/auth/verify?email=${encodeURIComponent(trimmed)}&next=${encodeURIComponent(next)}`,
       );
     } catch {
       setError('Something went wrong. Please try again.');
@@ -52,7 +64,9 @@ export default function SignInPage() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your email and we&apos;ll send you a sign-in code.
+            {upgrading
+              ? 'One quick step before checkout: enter your email and we\u2019ll send a sign-in code, so Pro is attached to your plan.'
+              : 'Enter your email and we\u2019ll send you a sign-in code.'}
           </p>
         </div>
 

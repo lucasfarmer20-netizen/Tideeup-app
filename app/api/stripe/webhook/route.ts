@@ -92,7 +92,16 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
 
       if (byCustomer) {
         userId = byCustomer.id;
-      } else if (email) {
+      } else if (session.client_reference_id) {
+        // Set by create-checkout to the signed-in user's id.
+        const { data: byRef } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', session.client_reference_id)
+          .maybeSingle();
+        userId = byRef?.id ?? null;
+      }
+      if (!userId && email) {
         const { data: byEmail } = await supabase
           .from('users')
           .select('id')
