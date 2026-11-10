@@ -6,6 +6,9 @@ import type { PlannedTask } from './pressure.js';
 import type { DayPlan, PlannerInput, Task, TaskOutcome, WorkloadReport } from './types.js';
 
 export function matchesPriority(task: Task, priorities: PlannerInput['priorities']): boolean {
+  // A priority favours routine work in that area. Monthly deep cleans keep
+  // their own rotation and never outrank the week's basics.
+  if (task.frequency === 'monthly') return false;
   return (priorities ?? []).some(p =>
     p === 'kitchen-reset' ? task.zone === 'kitchen' :
     p === 'bathrooms' ? task.zone === 'bathroom' && !task.tags.includes('pet') :

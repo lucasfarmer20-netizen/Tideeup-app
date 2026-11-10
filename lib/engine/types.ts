@@ -48,7 +48,20 @@ export type TimeDistribution = 'spread' | 'weekends' | 'weekdays';
  * callers (saved plans, the Sunday cron, tests) keep working; the engine
  * derives sensible values from the coarse fields when these are absent.
  */
+/**
+ * "Your setup" answers. Each one moves a task by enough minutes to change a
+ * plan. Every field is optional: an unanswered question keeps the default
+ * estimate (dishwasher, no robot vacuum, in-home laundry, lawn by home type).
+ */
+export interface HouseholdSetup {
+  dishes?: 'dishwasher' | 'hand';
+  robotVacuum?: boolean;
+  laundry?: 'in-home' | 'shared';
+  lawn?: boolean;
+}
+
 export interface HouseholdProfile {
+  setup?: HouseholdSetup;
   /** P3 additions are opt-in; historical unversioned profiles stay included. */
   version?: 3;
   upkeepTime?: UpkeepTime;

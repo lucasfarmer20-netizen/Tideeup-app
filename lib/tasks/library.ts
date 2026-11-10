@@ -229,7 +229,7 @@ export const TASK_LIBRARY: Task[] = [
     id: 'deep-clean-stovetop',
     title: 'Deep clean stovetop and burners',
     zone: 'kitchen',
-    frequency: 'weekly',
+    frequency: 'monthly',
     typicalMinutes: { S: 12, M: 18, L: 22, XL: 25 },
     chaosImpact: 0.60,
     fatigueCost: 0.35,
