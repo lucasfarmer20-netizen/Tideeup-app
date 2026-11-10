@@ -98,6 +98,14 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   // Upsert household (partial — existing columns not in patch stay unchanged via ON CONFLICT DO UPDATE)
   // Supabase upsert replaces all columns, so we need to merge with existing data first
   const { data: existing } = await supabase.from('households').select('*').eq('user_id', userId).maybeSingle();
+
+  // Settings does not edit the quiz's "Your setup" answers yet, so a profile
+  // saved from here must not silently drop them.
+  if (profile !== undefined && profile.setup === undefined) {
+    const prior = profileSchema.safeParse((existing as { profile?: unknown } | null)?.profile);
+    const priorSetup = prior.success ? toHouseholdProfile(prior.data).setup : undefined;
+    if (priorSetup) { profile.setup = priorSetup; patch.profile = profile; }
+  }
   const merged = { ...(existing ?? {}), ...patch };
 
   // Ensure required columns are present for insert

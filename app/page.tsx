@@ -36,7 +36,7 @@ function Hero() {
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-            Answer 4 quick questions and get a personalized weekly cleaning plan that fits
+            Answer a few quick questions and get a personalized weekly cleaning plan that fits
             your home, your household, and the time you actually have — then get back to your life.
           </p>
 
@@ -94,7 +94,7 @@ const HOW_STEPS = [
   {
     icon: Home,
     title: 'Tell us about your home',
-    body: 'Home size, flooring, who lives there, pets, and your daily time budget. 4 quick questions, under 60 seconds.',
+    body: 'Home size, flooring, who lives there, pets, and your daily time budget. A few quick questions, about a minute.',
   },
   {
     icon: Sparkles,

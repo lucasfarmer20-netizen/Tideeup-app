@@ -6,7 +6,8 @@ import { Loader2, Sparkles, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { QuizState } from '@/hooks/useQuiz';
 import type { GeneratePlanRequest, GeneratePlanResponse } from '@/types/api';
-import type { PetType } from '@/lib/engine/types.js';
+import type { HouseholdSetup, PetType } from '@/lib/engine/types.js';
+import { hasYard } from './SetupStep';
 
 interface Props {
   state: QuizState;
@@ -81,6 +82,13 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
     setError(null);
 
     try {
+      // Only answered setup questions are sent; the rest keep default estimates.
+      const setup: HouseholdSetup = {
+        ...(state.dishes !== null ? { dishes: state.dishes } : {}),
+        ...(state.robotVacuum !== null ? { robotVacuum: state.robotVacuum } : {}),
+        ...(state.laundry !== null ? { laundry: state.laundry } : {}),
+        ...(state.lawn !== null && hasYard(state.homeType) ? { lawn: state.lawn } : {}),
+      };
       const body: GeneratePlanRequest = {
         homeSize:       state.homeSize,
         homeType:       state.homeType,
@@ -96,6 +104,7 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
           floors:       state.floors,
           ...(state.weeklyHours !== null ? { weeklyHours: state.weeklyHours } : {}),
           distribution: state.distribution,
+          ...(Object.keys(setup).length > 0 ? { setup } : {}),
         },
         priorities: state.priorities,
       };
@@ -161,6 +170,14 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
     ? state.priorities.map((p) => PRIORITY_LABELS[p] ?? p).join(', ')
     : 'None picked';
 
+  const setupParts = [
+    state.dishes === 'dishwasher' ? 'Dishwasher' : state.dishes === 'hand' ? 'Hand-wash dishes' : null,
+    state.robotVacuum === true ? 'Robot vacuum' : null,
+    state.laundry === 'in-home' ? 'Laundry at home' : state.laundry === 'shared' ? 'Shared laundry / laundromat' : null,
+    hasYard(state.homeType) && state.lawn === true ? 'Mows lawn' : hasYard(state.homeType) && state.lawn === false ? 'No mowing' : null,
+  ].filter(Boolean);
+  const setupSummary = setupParts.length ? setupParts.join(' · ') : 'Not answered — using typical times';
+
   const petSummary = state.petTypes.length === 0
     ? 'No pets'
     : state.petTypes.map((p) => PET_LABELS[p]).join(', ');
@@ -204,26 +221,31 @@ export function ReviewStep({ state, back, goToStep, canAdvance }: Props) {
           />
         )}
         <SummaryRow
+          label="Your setup"
+          value={setupSummary}
+          onEdit={() => goToStep(3)}
+        />
+        <SummaryRow
           label="Household"
           value={householdParts}
-          onEdit={() => goToStep(3)}
+          onEdit={() => goToStep(4)}
         />
         <SummaryRow
           label="Pets"
           value={petSummary}
-          onEdit={() => goToStep(3)}
+          onEdit={() => goToStep(4)}
         />
         {timeSummary && (
           <SummaryRow
             label="Time"
             value={timeSummary}
-            onEdit={() => goToStep(4)}
+            onEdit={() => goToStep(5)}
           />
         )}
         <SummaryRow
           label="Priorities"
           value={prioritySummary}
-          onEdit={() => goToStep(5)}
+          onEdit={() => goToStep(6)}
         />
       </div>
 

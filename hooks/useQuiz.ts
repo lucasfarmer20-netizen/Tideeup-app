@@ -24,14 +24,19 @@ export interface QuizState {
   // Step 2 — details
   homeType: HomeType | null;
   flooringTypes: FlooringType[];
-  // Step 3 — household
+  // Step 3 — your setup (all optional; null = not answered)
+  dishes: 'dishwasher' | 'hand' | null;
+  robotVacuum: boolean | null;
+  laundry: 'in-home' | 'shared' | null;
+  lawn: boolean | null;
+  // Step 4 — household
   adults: number;               // 1–6
   kidAges: KidAges;
   petTypes: PetType[];
-  // Step 4 — time
+  // Step 5 — time
   weeklyHours: number | null;   // 2 | 3.5 | 6 | 9
   distribution: TimeDistribution;
-  // Step 5 — priorities (pick up to 2)
+  // Step 6 — priorities (pick up to 2)
   priorities: Priority[];
 
   // ── Derived (kept so existing consumers keep working) ───────────────────
@@ -55,7 +60,7 @@ export interface UseQuizReturn {
 
 // ─── Parsers ──────────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 export { TOTAL_STEPS };
 
 function parseStep(s: string | null): number {
@@ -76,6 +81,14 @@ function parseHomeType(s: string | null): HomeType | null {
     s === 'large-home'
   ) return s;
   return null;
+}
+
+function parseOneOf<T extends string>(s: string | null, options: readonly T[]): T | null {
+  return (options as readonly string[]).includes(s ?? '') ? (s as T) : null;
+}
+
+function parseYesNo(s: string | null): boolean | null {
+  return s === 'true' ? true : s === 'false' ? false : null;
 }
 
 const VALID_FLOORING: FlooringType[] = ['hardwood', 'carpet', 'tile', 'mixed'];
@@ -138,10 +151,11 @@ function parsePetTypes(s: string | null): PetType[] {
 function canAdvanceFrom(state: QuizState): boolean {
   if (state.step === 1) return state.homeSize !== null;
   if (state.step === 2) return state.homeType !== null && state.flooringTypes.length > 0;
-  if (state.step === 3) return state.adults >= 1; // pets and kids optional
-  if (state.step === 4) return state.weeklyHours !== null;
-  if (state.step === 5) return true; // priorities optional
-  if (state.step === 6) {
+  if (state.step === 3) return true; // setup answers optional
+  if (state.step === 4) return state.adults >= 1; // pets and kids optional
+  if (state.step === 5) return state.weeklyHours !== null;
+  if (state.step === 6) return true; // priorities optional
+  if (state.step === 7) {
     return (
       state.homeSize !== null &&
       state.homeType !== null &&
@@ -172,6 +186,10 @@ export function useQuiz(): UseQuizReturn {
     floors:         floorsRaw === 2 ? 2 : 1,
     homeType:       parseHomeType(params.get('homeType')),
     flooringTypes:  parseFlooringTypes(params.get('flooringTypes')),
+    dishes:         parseOneOf(params.get('dishes'), ['dishwasher', 'hand'] as const),
+    robotVacuum:    parseYesNo(params.get('robotVacuum')),
+    laundry:        parseOneOf(params.get('laundry'), ['in-home', 'shared'] as const),
+    lawn:           parseYesNo(params.get('lawn')),
     adults,
     kidAges,
     petTypes:       parsePetTypes(params.get('petTypes')),

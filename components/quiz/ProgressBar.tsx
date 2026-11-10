@@ -1,8 +1,8 @@
 import { Progress } from '@/components/ui/progress';
 
-const STEP_LABELS = ['Your home', 'Home details', 'Your household', 'Your time', 'Priorities', 'Review'];
+const STEP_LABELS = ['Your home', 'Home details', 'Your setup', 'Your household', 'Your time', 'Priorities', 'Review'];
 // Endowed progress: starting above 0% increases quiz completion rate.
-const STEP_PROGRESS = [20, 45, 70, 90, 100];
+const STEP_PROGRESS = [20, 35, 50, 65, 80, 90, 100];
 
 interface ProgressBarProps {
   currentStep: number;
@@ -12,7 +12,7 @@ interface ProgressBarProps {
 export function ProgressBar({ currentStep }: ProgressBarProps) {
   const pct = STEP_PROGRESS[currentStep - 1] ?? 20;
   const label = STEP_LABELS[currentStep - 1] ?? '';
-  const isReview = currentStep >= 5;
+  const isReview = currentStep >= 7;
 
   return (
     <div className="space-y-2">
@@ -22,7 +22,7 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
             'Final step — Review your profile'
           ) : (
             <>
-              Question {currentStep} of 4{label ? ` — ${label}` : ''}
+              Step {currentStep} of 6{label ? ` — ${label}` : ''}
             </>
           )}
         </span>
