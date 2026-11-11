@@ -26,7 +26,7 @@ const WINDOW_DAYS = 9;
 
 function ctaButton(url: string, label: string): string {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:8px 0 24px;">
-    <tr><td style="border-radius:8px;background:#0D9488;">
+    <tr><td style="border-radius:8px;background:#A8512F;">
       <a href="${url}" target="_blank" style="display:inline-block;padding:13px 26px;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;font-family:system-ui,sans-serif;border-radius:8px;">${label}</a>
     </td></tr></table>`;
 }
@@ -42,7 +42,7 @@ ${bodyInner}
 function buildOnboardingEmail(step: 1 | 2 | 3, appUrl: string): string {
   if (step === 1) {
     return shell(`
-      <h1 style="color:#0D9488;font-size:22px;margin:0 0 8px;">Welcome to TideeUp Pro 🎉</h1>
+      <h1 style="color:#A8512F;font-size:22px;margin:0 0 8px;">Welcome to TideeUp Pro 🎉</h1>
       <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">You just unlocked rotation memory, member assignment, history, custom tasks, and your Sunday digest. Here's the fastest way to feel the difference:</p>
       <p style="color:#0f172a;font-size:16px;font-weight:700;margin:0 0 4px;">Add the people you live with</p>
       <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0 0 4px;">Assign tasks to each person so the work is shared, not assumed. It takes about a minute.</p>
@@ -50,7 +50,7 @@ function buildOnboardingEmail(step: 1 | 2 | 3, appUrl: string): string {
   }
   if (step === 2) {
     return shell(`
-      <h1 style="color:#0D9488;font-size:22px;margin:0 0 8px;">Make TideeUp yours 🛠️</h1>
+      <h1 style="color:#A8512F;font-size:22px;margin:0 0 8px;">Make TideeUp yours 🛠️</h1>
       <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">Two settings make every future plan fit your real life:</p>
       <p style="color:#0f172a;font-size:16px;font-weight:700;margin:0 0 4px;">1. Add a custom task</p>
       <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0 0 12px;">Got something the library doesn't cover — a pool, a wood stove, a fish tank? Add it and the engine schedules it for you.</p>
@@ -59,7 +59,7 @@ function buildOnboardingEmail(step: 1 | 2 | 3, appUrl: string): string {
       ${ctaButton(`${appUrl}/settings`, 'Customize your plan →')}`);
   }
   return shell(`
-    <h1 style="color:#0D9488;font-size:22px;margin:0 0 8px;">Your Sunday digest is on its way 📬</h1>
+    <h1 style="color:#A8512F;font-size:22px;margin:0 0 8px;">Your Sunday digest is on its way 📬</h1>
     <p style="color:#334155;font-size:15px;line-height:1.6;margin:0 0 16px;">Every Sunday we'll email you a fresh, personalized week — built from your rotation memory so the same chores never pile up on the same days.</p>
     <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0 0 4px;">It'll show your streak, last week's completion rate, and what's coming back around. Check your dashboard any time to get a head start.</p>
     ${ctaButton(`${appUrl}/dashboard`, 'Open your dashboard →')}`);

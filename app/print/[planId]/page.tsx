@@ -14,12 +14,13 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  // Plan dates are UTC calendar markers; format them in UTC wherever this runs.
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
 }
 
 function PrintPlan({ plan }: { plan: WeekPlan }) {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 font-sans text-sm">
+    <div className="max-w-3xl mx-auto px-6 py-8 font-sans text-sm print:max-w-none print:p-0">
       {/* Print header */}
       <div className="flex items-center justify-between border-b pb-4 mb-6">
         <div>
@@ -28,12 +29,13 @@ function PrintPlan({ plan }: { plan: WeekPlan }) {
         </div>
         <div className="text-right text-xs text-muted-foreground">
           <p className="font-medium capitalize">{plan.metadata.season} plan</p>
-          <p>{plan.metadata.totalTasksScheduled} tasks · ~{Math.round(plan.metadata.totalMinutesPlanned / 60)}h total</p>
+          <p>~{(plan.metadata.totalMinutesPlanned / 60).toFixed(1).replace(/\.0$/, '')}h this week</p>
         </div>
       </div>
 
       {/* Days */}
-      <div className="space-y-6">
+      {/* Two columns, days kept whole: a typical week fits one sheet for the fridge. */}
+      <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2 print:grid-cols-2">
         {plan.days.map((day, i) => {
           if (day.tasks.length === 0) return null;
           const dateStr = formatDate(day.date);
@@ -41,7 +43,7 @@ function PrintPlan({ plan }: { plan: WeekPlan }) {
           const stabilisers = day.tasks.filter((t) => t.task.frequency === 'daily');
 
           return (
-            <div key={i} className="print-break-before">
+            <div key={i} className="print-keep-together">
               <div className="flex items-baseline justify-between mb-2 border-b border-dashed pb-1">
                 <h2 className="font-bold text-base">{dateStr}</h2>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -77,9 +79,9 @@ function PrintPlan({ plan }: { plan: WeekPlan }) {
 
       {/* Spillover */}
       {plan.spillover.length > 0 && (
-        <div className="mt-8 border-t pt-4">
-          <h3 className="font-semibold mb-2">Deferred to next week</h3>
-          <ul className="space-y-1">
+        <div className="mt-6 border-t pt-4 print-keep-together">
+          <h3 className="font-semibold mb-2">Didn&rsquo;t fit this week</h3>
+          <ul className="grid gap-x-8 gap-y-1 sm:grid-cols-2 print:grid-cols-2">
             {plan.spillover.map((t) => (
               <li key={t.id} className="text-muted-foreground">{t.title}</li>
             ))}
@@ -118,8 +120,8 @@ export default async function PrintPage({ params }: PageProps) {
     <>
       <style>{`
         @media print {
-          @page { margin: 1.5cm; }
-          body { font-size: 10pt; }
+          @page { margin: 1.2cm; }
+          body { font-size: 9.5pt; background: #fff; }
         }
       `}</style>
       <PrintActions planId={planId} />

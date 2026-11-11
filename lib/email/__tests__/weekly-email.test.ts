@@ -46,7 +46,7 @@ describe('weekly digest regressions', () => {
   it('uses a real signed unsubscribe URL, not the plan URL', async () => {
     fixture(); expect((await digest(request())).status).toBe(200);
     const html = mocks.send.mock.calls[0]?.[0].html as string;
-    expect(html).toContain(`${unsubscribeUrl('https://example.invalid', id, 'synthetic-key')}" style="color:#0D9488;">Unsubscribe`);
+    expect(html).toContain(`${unsubscribeUrl('https://example.invalid', id, 'synthetic-key')}" style="color:#A8512F;">Unsubscribe`);
     expect(html).toContain('2-week streak');
     expect(calls).toContainEqual({ table: 'users', method: 'neq', args: ['email_status', 'unsubscribed'] });
     expect(calls).toContainEqual({ table: 'plans', method: 'eq', args: ['week_of', '2026-11-02'] });

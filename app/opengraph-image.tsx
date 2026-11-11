@@ -31,7 +31,7 @@ export default function OpenGraphImage() {
               width: 72,
               height: 72,
               borderRadius: 18,
-              background: '#0D9488',
+              background: '#A8512F',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -48,7 +48,7 @@ export default function OpenGraphImage() {
               />
             </svg>
           </div>
-          <div style={{ fontSize: 44, fontWeight: 700, color: '#0D9488' }}>TideeUp</div>
+          <div style={{ fontSize: 44, fontWeight: 700, color: '#A8512F' }}>TideeUp</div>
         </div>
 
         <div style={{ fontSize: 76, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2 }}>

@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Printer, RefreshCw, ArrowRight, Flame } from 'lucide-react';
+import { cookies } from 'next/headers';
 import { getServerUser } from '@/lib/supabase/session.js';
+import { calendarToday } from '@/lib/time/today';
 import { createAdminClient } from '@/lib/supabase/server.js';
 import { CompleteWeekButton } from '@/components/dashboard/CompleteWeekButton';
 import { UpgradedBanner } from '@/components/dashboard/UpgradedBanner';
@@ -11,18 +13,10 @@ import type { SerializedWeekPlan, SerializedDayPlan } from '@/utils/serialize';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getCurrentMondayISO(): string {
-  const now = new Date();
-  const dow = now.getUTCDay();
-  const diff = dow === 0 ? -6 : 1 - dow;
-  const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() + diff);
-  monday.setUTCHours(0, 0, 0, 0);
-  return monday.toISOString().slice(0, 10);
-}
-
-function getTodayDow(): number {
-  return new Date().getUTCDay();
+/** The tz cookie is written URL-encoded by the browser. */
+function readZone(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try { return decodeURIComponent(raw); } catch { return undefined; }
 }
 
 function getPrimaryZone(day: SerializedDayPlan): string {
@@ -59,8 +53,9 @@ export default async function DashboardPage({
   if (!authUser?.email) notFound();
 
   const supabase = createAdminClient();
-  const mondayISO = getCurrentMondayISO();
-  const todayDow = getTodayDow();
+  // "Today" and "this week" follow the viewer's own clock (see TimezoneCookie),
+  // not the server's UTC day, which is already tomorrow by mid-afternoon in Alaska.
+  const { mondayISO, dow: todayDow } = calendarToday(readZone((await cookies()).get('tz')?.value));
 
   const { data: user } = await supabase
     .from('users')

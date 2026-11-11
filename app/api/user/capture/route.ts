@@ -1,3 +1,4 @@
+import { unsubscribeUrl } from '@/lib/email/unsubscribe';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
@@ -213,21 +214,21 @@ function buildSignInHtml({ otpCode, verifyUrl }: { otpCode: string; verifyUrl: s
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 16px; color: #1e293b;">
-  <h1 style="color: #0D9488; font-size: 24px; margin-bottom: 8px;">Welcome back to TideeUp</h1>
+  <h1 style="color: #A8512F; font-size: 24px; margin-bottom: 8px;">Welcome back to TideeUp</h1>
   <p style="color: #64748b; margin-bottom: 24px;">
     Use the code below to sign in. Your new plan will be waiting on your dashboard.
   </p>
 
   <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
     <p style="color: #64748b; font-size: 13px; margin: 0 0 8px;">Your sign-in code</p>
-    <p style="font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #0D9488; margin: 0; font-family: monospace;">
+    <p style="font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #A8512F; margin: 0; font-family: monospace;">
       ${otpCode}
     </p>
   </div>
 
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 16px;">
     <tr>
-      <td style="border-radius: 8px; background: #0D9488;">
+      <td style="border-radius: 8px; background: #A8512F;">
         <a href="${verifyUrl}"
            target="_blank"
            style="display: inline-block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; font-family: system-ui, sans-serif; border-radius: 8px; mso-padding-alt: 0;">
@@ -241,7 +242,7 @@ function buildSignInHtml({ otpCode, verifyUrl }: { otpCode: string; verifyUrl: s
 
   <p style="color: #94a3b8; font-size: 12px; margin: 0 0 4px;">Button not showing? Copy and paste this link:</p>
   <p style="font-size: 12px; margin: 0 0 24px; word-break: break-all;">
-    <a href="${verifyUrl}" style="color: #0D9488;">${verifyUrl}</a>
+    <a href="${verifyUrl}" style="color: #A8512F;">${verifyUrl}</a>
   </p>
 
   <p style="color: #94a3b8; font-size: 13px; margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
@@ -281,7 +282,13 @@ async function sendWelcomeEmail({
     from: fromEmail,
     to: email,
     subject: 'Your TideeUp plan is ready 🏠',
-    html: buildWelcomeHtml({ otpCode, verifyUrl, planUrl }),
+    html: buildWelcomeHtml({
+      otpCode,
+      verifyUrl,
+      planUrl,
+      // Same signed link the weekly email uses. It used to point at the plan.
+      unsubscribeLink: process.env.CRON_SECRET ? unsubscribeUrl(appUrl, userId, process.env.CRON_SECRET) : null,
+    }),
   });
 
   if (error) {
@@ -309,56 +316,56 @@ function buildWelcomeHtml({
   otpCode,
   verifyUrl,
   planUrl,
+  unsubscribeLink,
 }: {
   otpCode: string;
   verifyUrl: string;
   planUrl: string;
+  /** Signed unsubscribe link; omitted only if the signing secret is missing. */
+  unsubscribeLink: string | null;
 }): string {
+  // The plan link is what the person asked for, so it leads. Signing in is
+  // the optional second step.
   return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 16px; color: #1e293b;">
-  <h1 style="color: #0D9488; font-size: 24px; margin-bottom: 8px;">Your cleaning plan is ready 🏠</h1>
-  <p style="color: #64748b; margin-bottom: 24px;">
-    Use the code below to sign in and save your plan. The code is valid for 24 hours.
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 16px; color: #33302A;">
+  <h1 style="color: #A8512F; font-size: 24px; margin: 0 0 8px;">Your cleaning plan is ready 🏠</h1>
+  <p style="color: #6F665B; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+    Here is your link. Keep this email and you can open your plan on any device.
   </p>
 
-  <!-- OTP code -->
-  <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
-    <p style="color: #64748b; font-size: 13px; margin: 0 0 8px;">Your sign-in code</p>
-    <p style="font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #0D9488; margin: 0; font-family: monospace;">
-      ${otpCode}
-    </p>
-  </div>
-
   <!-- Table-based button: renders reliably in Gmail, Outlook, and all major clients -->
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 16px;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 12px;">
     <tr>
-      <td style="border-radius: 8px; background: #0D9488;">
-        <a href="${verifyUrl}"
+      <td style="border-radius: 8px; background: #A8512F;">
+        <a href="${planUrl}"
            target="_blank"
            style="display: inline-block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; font-family: system-ui, sans-serif; border-radius: 8px; mso-padding-alt: 0;">
           <!--[if mso]><i style="letter-spacing: 28px; mso-font-width: -100%; mso-text-raise: 30pt;">&nbsp;</i><![endif]-->
-          Enter code &amp; view my plan &rarr;
+          Open my plan &rarr;
           <!--[if mso]><i style="letter-spacing: 28px; mso-font-width: -100%;">&nbsp;</i><![endif]-->
         </a>
       </td>
     </tr>
   </table>
-
-  <p style="color: #94a3b8; font-size: 12px; margin: 0 0 4px;">Button not showing? Copy and paste this link into your browser:</p>
-  <p style="font-size: 12px; margin: 0 0 24px; word-break: break-all;">
-    <a href="${verifyUrl}" style="color: #0D9488;">${verifyUrl}</a>
+  <p style="font-size: 12px; margin: 0 0 28px; word-break: break-all;">
+    <a href="${planUrl}" style="color: #A8512F;">${planUrl}</a>
   </p>
 
-  <p style="color: #94a3b8; font-size: 13px; margin-top: 8px;">
-    Or <a href="${planUrl}" style="color: #0D9488;">view your plan directly</a> without signing in.
-  </p>
+  <div style="background: #FCF9F2; border: 1px solid #E5DCC9; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+    <p style="color: #33302A; font-size: 15px; font-weight: 700; margin: 0 0 4px;">Want your check-offs saved?</p>
+    <p style="color: #6F665B; font-size: 14px; line-height: 1.6; margin: 0 0 12px;">
+      Sign in with this code and your progress follows you between devices. It is valid for 24 hours.
+    </p>
+    <p style="font-size: 30px; font-weight: 800; letter-spacing: 6px; color: #A8512F; margin: 0 0 12px; font-family: monospace;">${otpCode}</p>
+    <a href="${verifyUrl}" style="color: #A8512F; font-size: 14px; font-weight: 600;">Sign in with this code &rarr;</a>
+  </div>
 
-  <p style="color: #94a3b8; font-size: 13px; margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-    You're receiving this because you used TideeUp to generate a cleaning plan.<br>
-    <a href="${planUrl}" style="color: #0D9488;">Unsubscribe</a>
+  <p style="color: #8C8377; font-size: 13px; margin-top: 24px; border-top: 1px solid #E5DCC9; padding-top: 16px;">
+    You're receiving this because you asked TideeUp to email your cleaning plan.${unsubscribeLink ? `<br>
+    <a href="${unsubscribeLink}" style="color: #A8512F;">Unsubscribe</a>` : ''}
   </p>
 </body>
 </html>

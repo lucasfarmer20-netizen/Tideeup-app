@@ -55,7 +55,7 @@ function buildSundayEmailHtml({
   members: string[];
 }): string {
   const streakBadge = streak >= 2
-    ? `<p style="font-size:13px;color:#0D9488;font-weight:700;margin:0 0 16px;">🔥 ${streak}-week streak — keep it going!</p>`
+    ? `<p style="font-size:13px;color:#A8512F;font-weight:700;margin:0 0 16px;">🔥 ${streak}-week streak — keep it going!</p>`
     : '';
 
   // Last week's completion rate — the personal progress hook.
@@ -82,7 +82,7 @@ function buildSundayEmailHtml({
     ? `<div style="background:#f8fafc;border-radius:10px;padding:12px 18px;margin-bottom:20px;">
         <p style="color:#64748b;font-size:13px;margin:0;">
           Split the load with ${members.slice(0, -1).join(', ')} and ${members[members.length - 1]} —
-          <a href="${planUrl}" style="color:#0D9488;">assign this week's tasks &rarr;</a>
+          <a href="${planUrl}" style="color:#A8512F;">assign this week's tasks &rarr;</a>
         </p>
       </div>`
     : '';
@@ -96,7 +96,7 @@ function buildSundayEmailHtml({
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:32px 16px;color:#1e293b;">
-  <h1 style="color:#0D9488;font-size:22px;margin:0 0 4px;">Your week is planned 🏠</h1>
+  <h1 style="color:#A8512F;font-size:22px;margin:0 0 4px;">Your week is planned 🏠</h1>
   <p style="color:#64748b;font-size:14px;margin:0 0 20px;">Here's what's coming up this week.</p>
 
   ${streakBadge}
@@ -119,7 +119,7 @@ function buildSundayEmailHtml({
 
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">
     <tr>
-      <td style="border-radius:8px;background:#0D9488;">
+      <td style="border-radius:8px;background:#A8512F;">
         <a href="${planUrl}" target="_blank"
            style="display:inline-block;padding:13px 26px;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;font-family:system-ui,sans-serif;border-radius:8px;">
           View full plan &rarr;
@@ -130,12 +130,12 @@ function buildSundayEmailHtml({
 
   <p style="color:#94a3b8;font-size:12px;margin:0 0 4px;">Button not showing? Copy this link:</p>
   <p style="font-size:12px;margin:0 0 32px;word-break:break-all;">
-    <a href="${planUrl}" style="color:#0D9488;">${planUrl}</a>
+    <a href="${planUrl}" style="color:#A8512F;">${planUrl}</a>
   </p>
 
   <p style="color:#94a3b8;font-size:12px;margin:0;border-top:1px solid #e2e8f0;padding-top:16px;">
     You're receiving this as a TideeUp Pro subscriber.<br>
-    <a href="${unsubscribeLink}" style="color:#0D9488;">Unsubscribe from weekly emails</a>
+    <a href="${unsubscribeLink}" style="color:#A8512F;">Unsubscribe from weekly emails</a>
   </p>
 </body>
 </html>`.trim();
