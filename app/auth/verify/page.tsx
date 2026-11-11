@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client.js';
+import { safeNext } from '@/lib/auth/next';
 
 // ─── Verify content ───────────────────────────────────────────────────────────
 
@@ -13,7 +14,7 @@ function VerifyContent() {
 
   const email = searchParams.get('email') ?? '';
   const urlCode = searchParams.get('code') ?? '';
-  const next = searchParams.get('next') ?? '/';
+  const next = safeNext(searchParams.get('next'), '/');
 
   const [code, setCode] = useState(urlCode);
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,9 @@ function VerifyContent() {
       return;
     }
 
-    // Session established in cookies via @supabase/ssr — redirect to plan
+    // Session established in cookies via @supabase/ssr. Attach any guest plan
+    // to this account before moving on; a failure here must not block sign-in.
+    await fetch('/api/auth/complete', { method: 'POST' }).catch(() => undefined);
     router.push(next);
   }, [email, next, router]);
 

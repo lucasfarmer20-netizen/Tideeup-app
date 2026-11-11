@@ -37,7 +37,10 @@ export function PricingClient() {
   const prefilledEmail = searchParams.get('email') ?? undefined;
   const didSucceed = searchParams.get('success') === 'true';
 
-  const [interval, setInterval] = useState<'monthly' | 'annual'>('annual');
+  // ?plan= survives the sign-in round trip so the choice is not lost.
+  const [interval, setInterval] = useState<'monthly' | 'annual'>(
+    searchParams.get('plan') === 'monthly' ? 'monthly' : 'annual',
+  );
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -66,13 +69,18 @@ export function PricingClient() {
       const res = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          priceId: selectedPrice.id,
-          email: session?.user.email ?? prefilledEmail,
-        }),
+        body: JSON.stringify({ priceId: selectedPrice.id }),
       });
 
       const data = (await res.json()) as { url?: string } & ApiError;
+
+      // Not signed in: sign in first (emailed code), then come straight back.
+      if (res.status === 401) {
+        const back = `/pricing?plan=${interval}`;
+        const emailParam = prefilledEmail ? `&email=${encodeURIComponent(prefilledEmail)}` : '';
+        router.push(`/auth/signin?next=${encodeURIComponent(back)}${emailParam}`);
+        return;
+      }
 
       if (!res.ok || !data.url) {
         setCheckoutError(data.message ?? 'Something went wrong.');
@@ -295,6 +303,12 @@ export function PricingClient() {
                       ? 'Upgrade to Pro — $5/mo (billed annually)'
                       : 'Upgrade to Pro — $7/mo'}
                 </button>
+
+                {!hasAccount && (
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                    You&apos;ll sign in with an emailed code first, so Pro attaches to your plan.
+                  </p>
+                )}
 
                 {!selectedPrice.id && (
                   <p className="mt-2 text-center text-xs text-muted-foreground">

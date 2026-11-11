@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server.js';
+import { safeNext } from '@/lib/auth/next';
 
 const schema = z.object({
   email: z.string().email('Invalid email address'),
+  next: z.string().max(200).optional(),
 });
 
 export async function POST(request: Request): Promise<NextResponse> {
@@ -24,6 +26,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const { email } = parsed.data;
+  const next = safeNext(parsed.data.next);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://tideeup.com';
 
   try {
@@ -34,7 +37,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       type: 'magiclink',
       email,
       options: {
-        redirectTo: `${appUrl}/auth/callback?next=/dashboard`,
+        redirectTo: `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
 
@@ -47,7 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     const otpCode = linkData.properties.email_otp;
-    const verifyUrl = `${appUrl}/auth/verify?email=${encodeURIComponent(email)}&code=${encodeURIComponent(otpCode)}&next=${encodeURIComponent('/dashboard')}`;
+    const verifyUrl = `${appUrl}/auth/verify?email=${encodeURIComponent(email)}&code=${encodeURIComponent(otpCode)}&next=${encodeURIComponent(next)}`;
 
     // Send sign-in email
     const resendKey = process.env.RESEND_API_KEY;

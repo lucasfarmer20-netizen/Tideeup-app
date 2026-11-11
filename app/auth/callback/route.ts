@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server.js';
+import { claimPendingPlan } from '@/lib/auth/claim-pending-plan';
 
 /**
  * Handles the Supabase magic link callback.
@@ -53,51 +53,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     if (pendingPlanId) {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser?.email) {
-          const adminClient = createAdminClient();
-
-          // Resolve the public.users row for this email (created by capture or on signup).
-          const { data: userRow } = await adminClient
-            .from('users')
-            .select('id')
-            .eq('email', authUser.email)
-            .maybeSingle();
-
-          if (userRow?.id) {
-            // Claim the plan (no-op if already claimed — .is('user_id', null) guard).
-            await adminClient
-              .from('plans')
-              .update({ user_id: userRow.id, is_claimed: true })
-              .eq('id', pendingPlanId)
-              .is('user_id', null);
-
-            // Ensure a household config row exists so the dashboard + cron can find it.
-            const { data: planRow } = await adminClient
-              .from('plans')
-              .select('home_size, home_type, household_count, pets, pet_types, kids, flooring_types, time_preference, profile, priorities')
-              .eq('id', pendingPlanId)
-              .maybeSingle();
-
-            if (planRow) {
-              await adminClient.from('households').upsert(
-                {
-                  user_id: userRow.id,
-                  home_size: planRow.home_size,
-                  home_type: planRow.home_type ?? null,
-                  household_count: planRow.household_count,
-                  pets: planRow.pets,
-                  pet_types: planRow.pet_types ?? [],
-                  kids: planRow.kids,
-                  flooring_types: planRow.flooring_types ?? [],
-                  time_preference: planRow.time_preference,
-                  ...(planRow.profile ? { profile: planRow.profile } : {}),
-                  priorities: planRow.priorities ?? [],
-                },
-                { onConflict: 'user_id' },
-              );
-            }
-          }
-        }
+        if (authUser?.email) await claimPendingPlan(authUser.email, pendingPlanId);
       } catch (claimErr) {
         console.error('[auth/callback] plan claim error:', claimErr);
         // Non-fatal — user still lands on dashboard, plan may appear on refresh.
@@ -106,8 +62,9 @@ export async function GET(request: Request): Promise<NextResponse> {
       // Clear the cookie regardless of claim outcome.
       cookieStore.delete('pending_plan_id');
 
-      // Send to dashboard so the claimed plan is immediately visible.
-      return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+      // Land on the dashboard so the claimed plan is visible, unless the person
+      // was on their way somewhere specific (for example, back to checkout).
+      return NextResponse.redirect(new URL(next === '/' ? '/dashboard' : next, requestUrl.origin));
     }
   }
 
