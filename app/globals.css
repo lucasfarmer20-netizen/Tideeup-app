@@ -122,6 +122,7 @@
 /* Print styles — used by /print/[planId] */
 @media print {
   .no-print { display: none !important; }
-  .print-break-before { break-before: page; }
+  /* Keep a day's block on one page instead of forcing a page per day. */
+  .print-keep-together { break-inside: avoid; }
   body { font-size: 11pt; }
 }

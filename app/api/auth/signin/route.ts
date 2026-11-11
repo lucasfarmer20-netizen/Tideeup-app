@@ -98,7 +98,7 @@ function buildSignInHtml({
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px 16px; color: #1e293b;">
-  <h1 style="color: #0D9488; font-size: 24px; margin-bottom: 8px;">Sign in to TideeUp</h1>
+  <h1 style="color: #A8512F; font-size: 24px; margin-bottom: 8px;">Sign in to TideeUp</h1>
   <p style="color: #64748b; margin-bottom: 24px;">
     Use the code below to sign in. The code is valid for 24 hours.
   </p>
@@ -106,7 +106,7 @@ function buildSignInHtml({
   <!-- OTP code -->
   <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
     <p style="color: #64748b; font-size: 13px; margin: 0 0 8px;">Your sign-in code</p>
-    <p style="font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #0D9488; margin: 0; font-family: monospace;">
+    <p style="font-size: 40px; font-weight: 800; letter-spacing: 10px; color: #A8512F; margin: 0; font-family: monospace;">
       ${otpCode}
     </p>
   </div>
@@ -114,7 +114,7 @@ function buildSignInHtml({
   <!-- Table-based button -->
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 16px;">
     <tr>
-      <td style="border-radius: 8px; background: #0D9488;">
+      <td style="border-radius: 8px; background: #A8512F;">
         <a href="${verifyUrl}"
            target="_blank"
            style="display: inline-block; padding: 14px 28px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; font-family: system-ui, sans-serif; border-radius: 8px; mso-padding-alt: 0;">
@@ -128,7 +128,7 @@ function buildSignInHtml({
 
   <p style="color: #94a3b8; font-size: 12px; margin: 0 0 4px;">Button not showing? Copy and paste this link:</p>
   <p style="font-size: 12px; margin: 0 0 24px; word-break: break-all;">
-    <a href="${verifyUrl}" style="color: #0D9488;">${verifyUrl}</a>
+    <a href="${verifyUrl}" style="color: #A8512F;">${verifyUrl}</a>
   </p>
 
   <p style="color: #94a3b8; font-size: 13px; margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
