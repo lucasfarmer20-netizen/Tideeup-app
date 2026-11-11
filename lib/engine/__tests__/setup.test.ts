@@ -83,3 +83,14 @@ describe('duration calibration', () => {
     expect(matchesPriority(task(family, 'wipe-kitchen-counters')!, ['kitchen-reset'])).toBe(true);
   });
 });
+
+describe('laundry in a tight week', () => {
+  it('always schedules at least one load', () => {
+    const tight: PlannerInput = {
+      ...family, householdCount: 4, petTypes: ['cat-1-2'], homeSize: 'M', priorities: ['kitchen-reset'],
+      profile: { adults: 2, kidAges: { under5: 0, age5to12: 2, teen: 0 }, bathrooms: 2, floors: 1, weeklyHours: 3.5, distribution: 'spread', setup: { dishes: 'dishwasher' } },
+    };
+    const plan = generateWeekPlan(tight);
+    expect(plan.days.flatMap(d => d.tasks).some(t => t.task.id === 'laundry-wash-dry')).toBe(true);
+  });
+});

@@ -83,6 +83,7 @@ function calibrate(task: Task, input: PlannerInput): Task {
     title = 'Laundry load: wash, dry, fold, put away';
     scope = `One of about ${loads} household load${loads === 1 ? '' : 's'} this week; active handling only, excludes machine time`;
     cadence = { target: loads, min: 1 };
+    essentialOccurrences = 1; // a week with no laundry at all is not a usable plan
   }
   // A robot vacuum does the run; what is left is clearing the floor, emptying
   // the bin and catching edges.

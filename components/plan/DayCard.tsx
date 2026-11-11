@@ -33,6 +33,8 @@ function getPrimaryZone(day: DayPlan): string {
 interface DayCardProps {
   day: DayPlan;
   isToday?: boolean;
+  /** Before the viewer's today: shown muted so a mid-week start reads clearly. */
+  isPast?: boolean;
   members?: string[];
   assignments?: Record<string, string>;
   onAssign?: (taskId: string, member: string | null) => void;
@@ -46,6 +48,7 @@ interface DayCardProps {
 export function DayCard({
   day,
   isToday = false,
+  isPast = false,
   members,
   assignments,
   onAssign,
@@ -76,7 +79,7 @@ export function DayCard({
 
   return (
     <div
-      className={`rounded-xl border bg-card shadow-sm overflow-hidden ${isToday ? 'ring-2 ring-primary' : ''}`}
+      className={`rounded-xl border bg-card shadow-sm overflow-hidden ${isToday ? 'ring-2 ring-primary' : ''} ${isPast ? 'opacity-60 print:opacity-100' : ''}`}
     >
       {/* Day header */}
       <div className="px-4 pt-4 pb-3 border-b flex items-center justify-between gap-2">
@@ -91,7 +94,7 @@ export function DayCard({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!isEmpty && (
+          {!isEmpty && zone !== 'general' && (
             <Badge variant="outline" className={`text-xs border ${zoneColor}`}>
               {zone}
             </Badge>

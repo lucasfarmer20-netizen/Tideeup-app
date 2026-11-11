@@ -118,20 +118,20 @@ export function EmailRevealGate({
           </div>
           {totalTasks ? (
             <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1 rounded-pill">
-              <span>{totalTasks} custom tasks scheduled</span>
+              <span>{totalTasks} tasks planned</span>
               {hoursLabel && <span>· {hoursLabel}</span>}
             </div>
           ) : null}
           <h2 className="text-2xl font-bold">Your 7-day plan is ready</h2>
           <p className="text-sm text-muted-foreground">
-            Where should we send your permanent plan link? You&apos;ll also unlock the full schedule right now.
+            Where should we send your plan link, so you can open it on any device?
           </p>
         </div>
 
         <ul className="space-y-1.5 bg-background/60 rounded-xl border p-3.5 text-xs text-foreground/90">
           <li className="flex items-center gap-2">
             <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Instant access to all 7 zone-balanced days</span>
+            <span>All 7 days, balanced around your time</span>
           </li>
           <li className="flex items-center gap-2">
             <Check className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -179,10 +179,19 @@ export function EmailRevealGate({
                 Unlocking your plan…
               </>
             ) : (
-              'Unlock my 7-day plan →'
+              'Email my plan and show it →'
             )}
           </Button>
         </form>
+
+        <button
+          type="button"
+          onClick={() => onReveal()}
+          disabled={isLoading}
+          className="block w-full min-h-[44px] text-center text-sm font-medium text-primary underline underline-offset-2 hover:no-underline"
+        >
+          Skip for now — just show my plan
+        </button>
 
         <p className="text-center text-xs text-muted-foreground">
           100% free · No password or credit card · Unsubscribe anytime

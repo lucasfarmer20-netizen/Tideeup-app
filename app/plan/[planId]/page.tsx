@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WeekPlanView } from '@/components/plan/WeekPlanView';
 import { createAdminClient } from '@/lib/supabase/server.js';
@@ -93,12 +92,9 @@ export default async function PlanPage({ params }: PageProps) {
           <Link href="/" className="text-2xl font-display font-semibold text-primary">TideeUp</Link>
           <div className="flex items-center gap-2">
             {!isPaid && (
-              <Button asChild size="sm">
-                <Link href="/pricing">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Upgrade to Pro
-                </Link>
-              </Button>
+              <Link href="/pricing" className="text-sm font-medium text-primary hover:underline px-2">
+                Explore Pro
+              </Link>
             )}
             <Button asChild variant="outline" size="sm">
               <Link href="/quiz">New plan</Link>

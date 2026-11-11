@@ -1,14 +1,13 @@
 import Link from 'next/link';
 import { AlertCircle, Sparkles } from 'lucide-react';
-import type { Task, HomeSize } from '@/lib/engine/types.js';
+import type { Task } from '@/lib/engine/types.js';
 
 interface SpilloverListProps {
   tasks: Task[];
-  homeSize?: HomeSize | undefined;
   isPaid?: boolean;
 }
 
-export function SpilloverList({ tasks, homeSize = 'M', isPaid = false }: SpilloverListProps) {
+export function SpilloverList({ tasks, isPaid = false }: SpilloverListProps) {
   if (tasks.length === 0) return null;
 
   return (
@@ -20,14 +19,13 @@ export function SpilloverList({ tasks, homeSize = 'M', isPaid = false }: Spillov
         </p>
       </div>
       <p className="text-xs text-muted-foreground">
-        These tasks scored for your home this week, but we held them back to protect your daily time budget.
+        These are worth doing in your home, but we held them back to keep each day inside the time you gave us.
       </p>
       <ul className="space-y-1.5">
         {tasks.map((task) => (
           <li key={task.id} className="flex items-center gap-2 text-sm text-foreground">
             <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
             {task.title}
-            <span className="text-xs text-muted-foreground ml-auto">{task.typicalMinutes[homeSize]}m+</span>
           </li>
         ))}
       </ul>
@@ -37,7 +35,7 @@ export function SpilloverList({ tasks, homeSize = 'M', isPaid = false }: Spillov
           <p className="text-xs text-foreground/85 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>
-              <strong>Pro Rotation Memory</strong> automatically moves these {tasks.length} tasks to the front of next week&apos;s plan.
+              On the free plan each week starts fresh. <strong>Pro</strong> remembers these and puts them first next week.
             </span>
           </p>
           <Link
